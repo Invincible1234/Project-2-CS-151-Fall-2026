@@ -7,6 +7,7 @@ public abstract class F1Car {
     private final int year;
     private double totalMileage;
     private boolean raceReady;
+    private String lastSetupDate;
 
     protected F1Car(String chassisId, String teamName, String model, int year) {
         if (chassisId == null || teamName == null || model == null) {
@@ -19,6 +20,7 @@ public abstract class F1Car {
         this.teamName = teamName.trim();
         this.model = model.trim();
         this.year = year;
+        this.lastSetupDate = "";
     }
 
     public String getChassisId() {
@@ -43,5 +45,9 @@ public abstract class F1Car {
 
     public boolean isRaceReady() {
         return raceReady;
+    }
+
+    public String getLastSetupDate() {
+        return lastSetupDate;
     }
 }
