@@ -10,6 +10,7 @@ public abstract class F1Car {
     private String lastSetupDate;
     private String powerUnitType;
     private String currentAeroConfig;
+    private boolean permanentlyDecommissioned;
 
     protected F1Car(String chassisId, String teamName, String model, int year) {
         if (chassisId == null || teamName == null || model == null) {
@@ -25,6 +26,7 @@ public abstract class F1Car {
         this.lastSetupDate = "";
         this.powerUnitType = "";
         this.currentAeroConfig = "";
+        this.permanentlyDecommissioned = false;
     }
 
     public String getChassisId() {
@@ -61,5 +63,9 @@ public abstract class F1Car {
 
     public String getCurrentAeroConfig() {
         return currentAeroConfig;
+    }
+
+    public boolean isPermanentlyDecommissioned() {
+        return permanentlyDecommissioned;
     }
 }
