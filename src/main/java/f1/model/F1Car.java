@@ -9,6 +9,7 @@ public abstract class F1Car {
     private boolean raceReady;
     private String lastSetupDate;
     private String powerUnitType;
+    private String currentAeroConfig;
 
     protected F1Car(String chassisId, String teamName, String model, int year) {
         if (chassisId == null || teamName == null || model == null) {
@@ -23,6 +24,7 @@ public abstract class F1Car {
         this.year = year;
         this.lastSetupDate = "";
         this.powerUnitType = "";
+        this.currentAeroConfig = "";
     }
 
     public String getChassisId() {
@@ -55,5 +57,9 @@ public abstract class F1Car {
 
     public String getPowerUnitType() {
         return powerUnitType;
+    }
+
+    public String getCurrentAeroConfig() {
+        return currentAeroConfig;
     }
 }
