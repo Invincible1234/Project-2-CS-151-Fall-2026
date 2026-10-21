@@ -68,4 +68,14 @@ public abstract class F1Car {
     public boolean isPermanentlyDecommissioned() {
         return permanentlyDecommissioned;
     }
+
+    public void updateMileage(double kilometers) {
+        if (kilometers < 0) {
+            throw new IllegalArgumentException("Mileage cannot be negative.");
+        }
+        this.totalMileage += kilometers;
+        if (this.totalMileage > 500.0) {
+            this.raceReady = false;
+        }
+    }
 }
