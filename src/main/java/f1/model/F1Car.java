@@ -78,4 +78,22 @@ public abstract class F1Car {
             this.raceReady = false;
         }
     }
+
+    public boolean prepareForSession(SessionType sessionType) {
+        if (sessionType == null) {
+            throw new IllegalArgumentException("Session type is required.");
+        }
+        if (permanentlyDecommissioned) {
+            return false;
+        }
+        if (!raceReady) {
+            return false;
+        }
+        if (totalMileage > 500.0) {
+            return false;
+        }
+        this.raceReady = true;
+        this.lastSetupDate = "today";
+        return true;
+    }
 }
