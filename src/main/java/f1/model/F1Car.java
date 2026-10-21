@@ -106,4 +106,9 @@ public abstract class F1Car {
         }
         this.currentAeroConfig = upgrade.trim();
     }
+
+    public void markOutOfService() {
+        this.permanentlyDecommissioned = true;
+        this.raceReady = false;
+    }
 }
