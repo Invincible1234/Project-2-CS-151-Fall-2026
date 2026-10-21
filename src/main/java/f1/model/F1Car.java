@@ -96,4 +96,14 @@ public abstract class F1Car {
         this.lastSetupDate = "today";
         return true;
     }
+
+    public void applyAeroUpgrade(String upgrade) {
+        if (upgrade == null || upgrade.isBlank()) {
+            throw new IllegalArgumentException("Upgrade is required.");
+        }
+        if (permanentlyDecommissioned) {
+            throw new IllegalArgumentException("Cannot upgrade a decommissioned car.");
+        }
+        this.currentAeroConfig = upgrade.trim();
+    }
 }
