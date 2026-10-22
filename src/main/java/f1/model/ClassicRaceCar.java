@@ -1,6 +1,7 @@
 package f1.model;
 
 import java.time.Clock;
+import java.util.Locale;
 
 public class ClassicRaceCar extends F1Car {
     private int originalityScore;
@@ -8,6 +9,8 @@ public class ClassicRaceCar extends F1Car {
     private double powerLimitKw;
     private boolean restorationInProgress;
     private int scheduledRestorationYear;
+    private boolean preservationModeEnabled;
+    private String ownershipRecord;
 
     public ClassicRaceCar(String chassisId, String teamName, String model, int year,
             int originalityScore, int restorationYear, double powerLimitKw) {
@@ -30,6 +33,7 @@ public class ClassicRaceCar extends F1Car {
         this.originalityScore = originalityScore;
         this.restorationYear = restorationYear;
         this.powerLimitKw = powerLimitKw;
+        this.ownershipRecord = getTeamName();
     }
 
     public int getOriginalityScore() {
@@ -42,6 +46,64 @@ public class ClassicRaceCar extends F1Car {
 
     public double getPowerLimitKw() {
         return powerLimitKw;
+    }
+
+    public boolean isPreservationModeEnabled() {
+        return preservationModeEnabled;
+    }
+
+    public String getOwnershipRecord() {
+        return ownershipRecord + " (current team: " + getTeamName() + ")";
+    }
+
+    public void applyPreservationMode() {
+        requireIdleClassicCar();
+        if (preservationModeEnabled || restorationInProgress || isDueForMaintenance()
+                || !getOutOfServiceReason().isEmpty()) {
+            throw new IllegalStateException("Preservation mode requires a serviceable car not already in that mode.");
+        }
+        double reducedPower = powerLimitKw / 2;
+        if (reducedPower <= 0) {
+            throw new IllegalStateException("Power is too small to reduce for preservation mode.");
+        }
+        super.applyAeroUpgrade("BALANCED");
+        powerLimitKw = reducedPower;
+        preservationModeEnabled = true;
+        invalidatePreparation();
+    }
+
+    public boolean transferOwnershipRecord(String newTeam) {
+        if (newTeam == null || newTeam.isBlank()) {
+            throw new IllegalArgumentException("A new team name is required.");
+        }
+        requireTransferable();
+        String name = newTeam.strip();
+        if (name.equals(getTeamName())) {
+            throw new IllegalArgumentException("Choose a different owner.");
+        }
+        changeUnregisteredTeamName(name);
+        ownershipRecord += " -> " + name;
+        invalidatePreparation();
+        return true;
+    }
+
+    public boolean transferOwnershipRecord(Team destination) {
+        requireTransferable();
+        Team source = getRegisteredTeam();
+        if (source == null) {
+            throw new IllegalStateException("Register the car with its source team before a team-to-team transfer.");
+        }
+        source.transferClassicCar(this, destination);
+        ownershipRecord += " -> " + destination.getName();
+        invalidatePreparation();
+        return true;
+    }
+
+    public void decommission() {
+        requireIdleClassicCar();
+        retirePermanently();
+        restorationInProgress = false;
+        scheduledRestorationYear = 0;
     }
 
     public boolean isRestorationInProgress() {
@@ -106,6 +168,9 @@ public class ClassicRaceCar extends F1Car {
         if (sessionType == null) {
             throw new IllegalArgumentException("Session type is required.");
         }
+        if (preservationModeEnabled && sessionType != SessionType.PRACTICE) {
+            return false;
+        }
         return !restorationInProgress && super.prepareForSession(sessionType);
     }
 
@@ -116,10 +181,26 @@ public class ClassicRaceCar extends F1Car {
 
     @Override
     public void scheduleStrategy(String strategy) {
-        if (restorationInProgress) {
-            throw new IllegalStateException("Cannot schedule a race strategy during restoration.");
+        if (restorationInProgress || preservationModeEnabled) {
+            throw new IllegalStateException("Cannot schedule a race strategy during restoration or preservation.");
         }
         super.scheduleStrategy(strategy);
+    }
+
+    @Override
+    public void applyAeroUpgrade(String upgrade) {
+        if (preservationModeEnabled && upgrade != null
+                && !"BALANCED".equals(upgrade.strip().toUpperCase(Locale.ROOT))) {
+            throw new IllegalStateException("Preserved classic cars require BALANCED aerodynamics.");
+        }
+        super.applyAeroUpgrade(upgrade);
+    }
+
+    private void requireTransferable() {
+        requireIdleClassicCar();
+        if (restorationInProgress || hasActiveAssignments() || originalityScore == 0) {
+            throw new IllegalStateException("Transfers require verified originality and no restoration or assignments.");
+        }
     }
 
     private int validateOriginalityChange(int delta) {
