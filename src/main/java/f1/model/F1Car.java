@@ -1,12 +1,15 @@
 package f1.model;
 
-public abstract class F1Car {
+public abstract class F1Car implements Raceable {
+    private static final double MAINTENANCE_INTERVAL_KM = 500.0;
     private final String chassisId;
     private final String teamName;
     private final String model;
     private final int year;
     private double totalMileage;
     private boolean raceReady;
+    private boolean sessionActive;
+    private SessionType preparedSessionType;
     private String lastSetupDate;
     private String powerUnitType;
     private String currentAeroConfig;
@@ -76,27 +79,65 @@ public abstract class F1Car {
             throw new IllegalArgumentException("Mileage cannot be negative.");
         }
         this.totalMileage += kilometers;
-        if (this.totalMileage > 500.0) {
+        if (this.totalMileage > MAINTENANCE_INTERVAL_KM) {
             this.raceReady = false;
         }
     }
 
+    @Override
     public boolean prepareForSession(SessionType sessionType) {
         if (sessionType == null) {
             throw new IllegalArgumentException("Session type is required.");
         }
-        if (permanentlyDecommissioned) {
+        if (permanentlyDecommissioned || sessionActive || raceReady
+                || totalMileage > MAINTENANCE_INTERVAL_KM) {
             return false;
         }
-        if (!raceReady) {
-            return false;
-        }
-        if (totalMileage > 500.0) {
-            return false;
-        }
+        this.preparedSessionType = sessionType;
         this.raceReady = true;
         this.lastSetupDate = "today";
         return true;
+    }
+
+    public void startSession() {
+        if (!isAvailableForRace()) {
+            throw new IllegalStateException("Prepare an available car before starting a session.");
+        }
+        sessionActive = true;
+        raceReady = false;
+    }
+
+    @Override
+    public void completeSession() {
+        if (!sessionActive) {
+            throw new IllegalStateException("There is no active session to complete.");
+        }
+        sessionActive = false;
+        preparedSessionType = null;
+        raceReady = false;
+    }
+
+    public boolean isSessionActive() {
+        return sessionActive;
+    }
+
+    public SessionType getPreparedSessionType() {
+        return preparedSessionType;
+    }
+
+    @Override
+    public boolean isAvailableForRace() {
+        return raceReady && !sessionActive && !permanentlyDecommissioned
+                && totalMileage <= MAINTENANCE_INTERVAL_KM;
+    }
+
+    @Override
+    public String getNextMaintenanceDue() {
+        if (totalMileage > MAINTENANCE_INTERVAL_KM) {
+            return "Maintenance required before the next session.";
+        }
+        return "Maintenance interval: " + Math.max(0, MAINTENANCE_INTERVAL_KM - totalMileage)
+                + " km remaining.";
     }
 
     public void applyAeroUpgrade(String upgrade) {
