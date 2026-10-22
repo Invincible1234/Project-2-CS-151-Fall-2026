@@ -24,6 +24,8 @@ public abstract class F1Car implements Raceable {
     private String currentAeroConfig;
     private boolean permanentlyDecommissioned;
     private String scheduledStrategy;
+    private Driver assignedDriver;
+    private Engineer assignedEngineer;
 
     protected F1Car(String chassisId, String teamName, String model, int year) {
         this(chassisId, teamName, model, year, Clock.systemDefaultZone());
@@ -224,6 +226,64 @@ public abstract class F1Car implements Raceable {
 
     public String getScheduledStrategy() {
         return scheduledStrategy;
+    }
+
+    public Driver getAssignedDriver() {
+        return assignedDriver;
+    }
+
+    public Engineer getAssignedEngineer() {
+        return assignedEngineer;
+    }
+
+    public boolean hasActiveAssignments() {
+        return assignedDriver != null || assignedEngineer != null;
+    }
+
+    public boolean hasScheduledStrategy() {
+        return scheduledStrategy != null && !scheduledStrategy.isBlank();
+    }
+
+    void assignDriver(Driver driver) {
+        requireAssignable();
+        if (driver == null || assignedDriver != null) {
+            throw new IllegalStateException("Car requires a driver and must not already have one.");
+        }
+        assignedDriver = driver;
+    }
+
+    void releaseDriver(Driver driver) {
+        if (hasScheduledStrategy()) {
+            throw new IllegalStateException("Cannot release a driver while a strategy is scheduled.");
+        }
+        if (assignedDriver != driver) {
+            throw new IllegalStateException("Driver is not assigned to this car.");
+        }
+        assignedDriver = null;
+    }
+
+    void assignEngineer(Engineer engineer) {
+        requireAssignable();
+        if (engineer == null || assignedEngineer != null) {
+            throw new IllegalStateException("Car requires an engineer and must not already have one.");
+        }
+        assignedEngineer = engineer;
+    }
+
+    void releaseEngineer(Engineer engineer) {
+        if (hasScheduledStrategy()) {
+            throw new IllegalStateException("Cannot release an engineer while a strategy is scheduled.");
+        }
+        if (assignedEngineer != engineer) {
+            throw new IllegalStateException("Engineer is not assigned to this car.");
+        }
+        assignedEngineer = null;
+    }
+
+    private void requireAssignable() {
+        if (permanentlyDecommissioned || hasScheduledStrategy()) {
+            throw new IllegalStateException("Car is decommissioned or has a scheduled strategy.");
+        }
     }
 
     public void scheduleStrategy(String strategy) {
