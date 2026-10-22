@@ -74,8 +74,12 @@ public class HybridSpecialistVerification {
         HybridRaceCar car = car("UPGRADES");
         expect(IllegalStateException.class, () -> car.applyHybridUpgrade("PERFORMANCE"));
         car.lockForSpecialist(engineer("E2", "HYBRID_POWER_UNIT"));
+        car.prepareForSession(SessionType.PRACTICE);
+        car.startSession();
         car.deployEnergyBoost(1);
         car.chargeBatteryFromRecovery(1);
+        car.completeLap();
+        car.completeSession();
         for (HybridUpgrade upgrade : HybridUpgrade.values()) {
             car.prepareForSession(SessionType.PRACTICE);
             check(car.applyHybridUpgrade(" " + upgrade.name().toLowerCase(java.util.Locale.ROOT) + " "),
