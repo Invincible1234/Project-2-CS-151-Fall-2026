@@ -1,9 +1,12 @@
 package f1.model;
 
+import exception.CapacityExceededException;
+import exception.DuplicateEntityException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import util.Constants;
 
 public final class Team {
@@ -55,6 +58,20 @@ public final class Team {
         return championshipPoints;
     }
 
+    public boolean addCar(F1Car car) {
+        return register(cars, car, F1Car::getChassisId, capacity, "Car");
+    }
+
+    public boolean addDriver(Driver driver) {
+        return register(drivers, driver, Driver::getLicenseNumber,
+                Constants.MAXIMUM_INSTANCES, "Driver");
+    }
+
+    public boolean addEngineer(Engineer engineer) {
+        return register(engineers, engineer, Engineer::getEmployeeId,
+                Constants.MAXIMUM_INSTANCES, "Engineer");
+    }
+
     public List<F1Car> getCars() {
         return List.copyOf(cars);
     }
@@ -92,6 +109,23 @@ public final class Team {
                 + ", engineers=" + engineers.size()
                 + ", championshipPoints=" + championshipPoints
                 + ", raceResults=" + raceResults.size() + ", strategies=" + strategies.size() + "}";
+    }
+
+    private static <T> boolean register(List<T> members, T member,
+            Function<T, String> identity, int limit, String type) {
+        if (member == null) {
+            throw new IllegalArgumentException(type + " is required.");
+        }
+        String memberId = requireText(identity.apply(member), type + " identity");
+        for (T existing : members) {
+            if (memberId.equals(requireText(identity.apply(existing), type + " identity"))) {
+                throw new DuplicateEntityException(type + " is already registered with this team.");
+            }
+        }
+        if (members.size() >= limit) {
+            throw new CapacityExceededException(type + " capacity of " + limit + " has been reached.");
+        }
+        return members.add(member);
     }
 
     private static String requireText(String value, String fieldName) {
