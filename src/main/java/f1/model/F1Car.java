@@ -2,6 +2,7 @@ package f1.model;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Objects;
 
 public abstract class F1Car implements Raceable {
@@ -21,7 +22,7 @@ public abstract class F1Car implements Raceable {
     private SessionType preparedSessionType;
     private String lastSetupDate;
     private String powerUnitType;
-    private String currentAeroConfig;
+    private AeroConfiguration currentAeroConfig;
     private boolean permanentlyDecommissioned;
     private String scheduledStrategy;
 
@@ -43,7 +44,6 @@ public abstract class F1Car implements Raceable {
         this.year = year;
         this.lastSetupDate = "";
         this.powerUnitType = "";
-        this.currentAeroConfig = "";
         this.permanentlyDecommissioned = false;
         this.scheduledStrategy = "";
     }
@@ -81,7 +81,7 @@ public abstract class F1Car implements Raceable {
     }
 
     public String getCurrentAeroConfig() {
-        return currentAeroConfig;
+        return currentAeroConfig == null ? "" : currentAeroConfig.name();
     }
 
     public boolean isPermanentlyDecommissioned() {
@@ -216,10 +216,21 @@ public abstract class F1Car implements Raceable {
         if (upgrade == null || upgrade.isBlank()) {
             throw new IllegalArgumentException("Upgrade is required.");
         }
-        if (permanentlyDecommissioned) {
-            throw new IllegalArgumentException("Cannot upgrade a decommissioned car.");
+        AeroConfiguration configuration;
+        try {
+            configuration = AeroConfiguration.valueOf(upgrade.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException(
+                    "Choose BALANCED, LOW_DRAG, or HIGH_DOWNFORCE.");
         }
-        this.currentAeroConfig = upgrade.trim();
+        if (sessionActive || permanentlyDecommissioned || isDueForMaintenance()
+                || !outOfServiceReason.isEmpty()) {
+            throw new IllegalStateException(
+                    "Upgrades require an idle, serviceable car that has not been decommissioned.");
+        }
+        currentAeroConfig = configuration;
+        raceReady = false;
+        preparedSessionType = null;
     }
 
     public String getScheduledStrategy() {
@@ -236,8 +247,4 @@ public abstract class F1Car implements Raceable {
         this.scheduledStrategy = strategy.trim();
     }
 
-    public void markOutOfService() {
-        this.permanentlyDecommissioned = true;
-        this.raceReady = false;
-    }
 }
