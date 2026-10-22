@@ -122,4 +122,9 @@ public abstract class F1Car {
         }
         this.scheduledStrategy = strategy.trim();
     }
+
+    public void markOutOfService() {
+        this.permanentlyDecommissioned = true;
+        this.raceReady = false;
+    }
 }
