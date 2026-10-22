@@ -3,6 +3,8 @@ package f1.model;
 import exception.CapacityExceededException;
 import java.util.ArrayList;
 import java.util.List;
+import util.AccessContext;
+import util.AccessPolicy;
 import util.Constants;
 import util.Validation;
 
@@ -45,6 +47,13 @@ public class Driver {
         return name;
     }
 
+    final void addChampionshipPoints(int points) {
+        if (points < 0 || points > Integer.MAX_VALUE - championshipPoints) {
+            throw new IllegalArgumentException("Championship points must fit the supported range.");
+        }
+        championshipPoints += points;
+    }
+
     public String getLicenseNumber() {
         return licenseNumber;
     }
@@ -63,6 +72,18 @@ public class Driver {
 
     public List<String> getAssignedChassisIds() {
         return List.copyOf(assignedChassisIds);
+    }
+
+    public String phoneFor(AccessContext caller) {
+        return AccessPolicy.visiblePhone(caller, driverId, phone);
+    }
+
+    public String medicalNotesFor(AccessContext caller) {
+        return AccessPolicy.visibleMedicalNotes(caller, driverId, medicalNotes);
+    }
+
+    public String banReasonFor(AccessContext caller) {
+        return AccessPolicy.visibleBanReason(caller, driverId, banReason);
     }
 
     public boolean isEligibleForAssignment() {
@@ -118,7 +139,8 @@ public class Driver {
     }
 
     public boolean requestCarSetup(String preference) {
-        return false;
+        this.preferredSetup = Validation.requireText(preference, "Setup preference");
+        return true;
     }
 
     public void setMedicalClearance(boolean cleared, String notes) {
@@ -144,18 +166,34 @@ public class Driver {
     }
 
     public void updateContact(String newPhone) {
+        this.phone = Validation.requirePhone(newPhone);
     }
 
-    public String getPhone(String role) {
-        return null;
+    public void completeRace(int finishingPosition, Circuit circuit) {
+        if (circuit == null) {
+            throw new IllegalArgumentException("Circuit is required.");
+        }
+        int position = Validation.requirePosition(finishingPosition);
+        if (banned) {
+            throw new IllegalArgumentException("A banned driver cannot complete a race.");
+        }
+        championshipPoints += pointsFor(position);
     }
 
-    public boolean isMedicalClearance(String role) {
-        return false;
-    }
-
-    public boolean isBanned(String role) {
-        return false;
+    private static int pointsFor(int position) {
+        return switch (position) {
+            case 1 -> 25;
+            case 2 -> 18;
+            case 3 -> 15;
+            case 4 -> 12;
+            case 5 -> 10;
+            case 6 -> 8;
+            case 7 -> 6;
+            case 8 -> 4;
+            case 9 -> 2;
+            case 10 -> 1;
+            default -> 0;
+        };
     }
 
     @Override
