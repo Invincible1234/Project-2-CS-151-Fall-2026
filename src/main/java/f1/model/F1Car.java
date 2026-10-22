@@ -16,21 +16,7 @@ public abstract class F1Car {
     protected F1Car(String chassisId, String teamName, String model, int year) {
         if (chassisId == null || teamName == null || model == null) {
             throw new IllegalArgumentException("Chassis ID, team, and model are required.");
-        
-    public String getScheduledStrategy() {
-        return scheduledStrategy;
-    }
-
-    public void scheduleStrategy(String strategy) {
-        if (strategy == null || strategy.isBlank()) {
-            throw new IllegalArgumentException("Strategy is required.");
         }
-        if (permanentlyDecommissioned) {
-            throw new IllegalArgumentException("Cannot schedule strategy for decommissioned car.");
-        }
-        this.scheduledStrategy = strategy.trim();
-    }
-}
         if (chassisId.isBlank() || teamName.isBlank() || model.isBlank() || year < 1950) {
             throw new IllegalArgumentException("Names must be nonblank and year must be at least 1950.");
         }
