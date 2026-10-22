@@ -13,6 +13,8 @@ public class HybridRaceCar extends F1Car {
     private double recoveredThisLapMJ;
     private double mguKPowerKw;
     private HybridUpgrade hybridUpgrade;
+    private int currentLapNumber;
+    private boolean lapCompleted;
 
     public HybridRaceCar(String chassisId, String teamName, String model, int year,
             double batteryCapacityMJ, double currentEnergyMJ) {
@@ -48,6 +50,7 @@ public class HybridRaceCar extends F1Car {
         if (!Double.isFinite(energyMJ) || energyMJ <= 0) {
             throw new IllegalArgumentException("Deployment energy must be finite and positive.");
         }
+        requireActiveLap();
         if (energyMJ > currentEnergyMJ) {
             throw new IllegalArgumentException("Not enough battery energy for this boost.");
         }
@@ -63,6 +66,7 @@ public class HybridRaceCar extends F1Car {
         if (!Double.isFinite(energyMJ) || energyMJ <= 0) {
             throw new IllegalArgumentException("Recovered energy must be finite and positive.");
         }
+        requireActiveLap();
         double updatedEnergyMJ = currentEnergyMJ + energyMJ;
         if (!Double.isFinite(updatedEnergyMJ) || updatedEnergyMJ > batteryCapacityMJ) {
             throw new IllegalArgumentException("Recovered energy would exceed battery capacity.");
@@ -82,9 +86,64 @@ public class HybridRaceCar extends F1Car {
         return recoveredThisLapMJ;
     }
 
+    @Override
+    public void startSession() {
+        super.startSession();
+        clearLapCounters();
+        currentLapNumber = 1;
+        lapCompleted = false;
+    }
+
+    public void completeLap() {
+        requireActiveLap();
+        lapCompleted = true;
+    }
+
     public void startNextLap() {
+        if (!isSessionActive() || !lapCompleted) {
+            throw new IllegalStateException("Complete the current lap before starting another.");
+        }
+        if (isDueForMaintenance() || currentLapNumber == Integer.MAX_VALUE) {
+            throw new IllegalStateException("Cannot start another lap; end the session.");
+        }
+        clearLapCounters();
+        currentLapNumber++;
+        lapCompleted = false;
+    }
+
+    @Override
+    public void completeSession() {
+        super.completeSession();
+        currentLapNumber = 0;
+        lapCompleted = false;
+    }
+
+    public void resetEnergyState() {
+        if (isSessionActive() || hasScheduledStrategy() || isPermanentlyDecommissioned()) {
+            throw new IllegalStateException("Energy state can only be reset on an idle, uncommitted car.");
+        }
+        clearLapCounters();
+        currentLapNumber = 0;
+        lapCompleted = false;
+    }
+
+    public int getCurrentLapNumber() {
+        return currentLapNumber;
+    }
+
+    public boolean isLapCompleted() {
+        return lapCompleted;
+    }
+
+    private void clearLapCounters() {
         deployedThisLapMJ = 0;
         recoveredThisLapMJ = 0;
+    }
+
+    private void requireActiveLap() {
+        if (!isSessionActive() || lapCompleted) {
+            throw new IllegalStateException("Energy changes require an active, unfinished lap.");
+        }
     }
 
     public boolean requiresSpecialistEngineer() {
