@@ -19,6 +19,13 @@ public final class RaceResult {
     private RaceResultStatus status = RaceResultStatus.DRAFT;
     private String correctionReason = "";
     private String voidReason = "";
+    private PointsAccount pointsAccount;
+    private boolean pointsApplied;
+    private int appliedPoints;
+
+    interface PointsAccount {
+        void adjust(int delta);
+    }
 
     public RaceResult(String resultId, String raceId, String chassisId, String driverId,
             String circuitId, int finishingPosition, String date) {
@@ -94,6 +101,31 @@ public final class RaceResult {
         return voidReason;
     }
 
+    public boolean arePointsApplied() {
+        return pointsApplied;
+    }
+
+    boolean hasPointsAccount() {
+        return pointsAccount != null;
+    }
+
+    void bindPointsAccount(PointsAccount account) {
+        if (account == null || pointsAccount != null || !isValidResult()) {
+            throw new IllegalStateException("A valid result can only be registered with one points account.");
+        }
+        pointsAccount = account;
+    }
+
+    public void applyPointsToDriverAndTeam() {
+        requireRecorded();
+        if (pointsAccount == null || pointsApplied) {
+            throw new IllegalStateException("Register this result with its team once before applying points.");
+        }
+        pointsAccount.adjust(pointsEarned);
+        appliedPoints = pointsEarned;
+        pointsApplied = true;
+    }
+
     public void recordResult() {
         if (status != RaceResultStatus.DRAFT) {
             throw new IllegalStateException("Only a draft result can be recorded.");
@@ -108,14 +140,17 @@ public final class RaceResult {
         if (validatedPosition == finishingPosition) {
             throw new IllegalArgumentException("The correction must change the finishing position.");
         }
+        int correctedPoints = pointsFor(validatedPosition);
+        reconcilePoints(correctedPoints);
         finishingPosition = validatedPosition;
-        pointsEarned = pointsFor(validatedPosition);
+        pointsEarned = correctedPoints;
         correctionReason = validatedReason;
     }
 
     public void voidResult(String reason) {
         requireRecorded();
         String validatedReason = Validation.requireText(reason, "Void reason");
+        reconcilePoints(0);
         voidReason = validatedReason;
         pointsEarned = 0;
         status = RaceResultStatus.VOIDED;
@@ -153,6 +188,13 @@ public final class RaceResult {
     private void requireRecorded() {
         if (status != RaceResultStatus.RECORDED) {
             throw new IllegalStateException("Only a recorded, non-voided result can be changed.");
+        }
+    }
+
+    private void reconcilePoints(int nextPoints) {
+        if (pointsApplied) {
+            pointsAccount.adjust(nextPoints - appliedPoints);
+            appliedPoints = nextPoints;
         }
     }
 
