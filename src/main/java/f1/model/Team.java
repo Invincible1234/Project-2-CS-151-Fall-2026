@@ -58,6 +58,26 @@ public final class Team {
         return championshipPoints;
     }
 
+    public double getBudget(UserRole role) {
+        requireTeamPrincipal(role);
+        return budget;
+    }
+
+    public void addBudget(double amount, UserRole role) {
+        requireTeamPrincipal(role);
+        if (!Double.isFinite(amount) || amount <= 0) {
+            throw new IllegalArgumentException("Budget addition must be finite and positive.");
+        }
+        double updatedBudget = budget + amount;
+        if (!Double.isFinite(updatedBudget)) {
+            throw new IllegalArgumentException("Budget addition exceeds the supported amount.");
+        }
+        if (updatedBudget <= budget) {
+            throw new IllegalArgumentException("Budget addition is too small for the current balance.");
+        }
+        budget = updatedBudget;
+    }
+
     public boolean addCar(F1Car car) {
         validateRegistration(cars, car, F1Car::getChassisId, capacity, "Car");
         car.changeRegisteredTeam(null, this);
@@ -169,6 +189,12 @@ public final class Team {
                 + ", engineers=" + engineers.size()
                 + ", championshipPoints=" + championshipPoints
                 + ", raceResults=" + raceResults.size() + ", strategies=" + strategies.size() + "}";
+    }
+
+    private static void requireTeamPrincipal(UserRole role) {
+        if (role != UserRole.TEAM_PRINCIPAL) {
+            throw new SecurityException("Team principal access is required.");
+        }
     }
 
     private static <T> T findRegistered(List<T> members, T member,
