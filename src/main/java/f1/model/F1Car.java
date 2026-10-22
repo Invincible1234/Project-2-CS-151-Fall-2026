@@ -199,6 +199,11 @@ public abstract class F1Car implements Raceable {
         return preparedSessionType;
     }
 
+    protected final void invalidatePreparation() {
+        raceReady = false;
+        preparedSessionType = null;
+    }
+
     @Override
     public boolean isAvailableForRace() {
         return raceReady && !sessionActive && !permanentlyDecommissioned
@@ -261,16 +266,18 @@ public abstract class F1Car implements Raceable {
             throw new IllegalStateException("Car requires a driver and must not already have one.");
         }
         assignedDriver = driver;
+        invalidatePreparation();
     }
 
     void releaseDriver(Driver driver) {
-        if (hasScheduledStrategy()) {
-            throw new IllegalStateException("Cannot release a driver while a strategy is scheduled.");
+        if (sessionActive || hasScheduledStrategy()) {
+            throw new IllegalStateException("Cannot release a driver during a session or scheduled strategy.");
         }
         if (assignedDriver != driver) {
             throw new IllegalStateException("Driver is not assigned to this car.");
         }
         assignedDriver = null;
+        invalidatePreparation();
     }
 
     void assignEngineer(Engineer engineer) {
@@ -279,21 +286,24 @@ public abstract class F1Car implements Raceable {
             throw new IllegalStateException("Car requires an engineer and must not already have one.");
         }
         assignedEngineer = engineer;
+        invalidatePreparation();
     }
 
     void releaseEngineer(Engineer engineer) {
-        if (hasScheduledStrategy()) {
-            throw new IllegalStateException("Cannot release an engineer while a strategy is scheduled.");
+        if (sessionActive || hasScheduledStrategy()) {
+            throw new IllegalStateException("Cannot release an engineer during a session or scheduled strategy.");
         }
         if (assignedEngineer != engineer) {
             throw new IllegalStateException("Engineer is not assigned to this car.");
         }
         assignedEngineer = null;
+        invalidatePreparation();
     }
 
     private void requireAssignable() {
-        if (permanentlyDecommissioned || hasScheduledStrategy()) {
-            throw new IllegalStateException("Car is decommissioned or has a scheduled strategy.");
+        if (permanentlyDecommissioned || sessionActive || hasScheduledStrategy()
+                || isDueForMaintenance() || !outOfServiceReason.isEmpty()) {
+            throw new IllegalStateException("Assignments require an idle, serviceable, uncommitted car.");
         }
     }
 

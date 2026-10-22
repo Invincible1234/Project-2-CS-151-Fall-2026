@@ -77,8 +77,8 @@ public class Driver {
 
     void requireReleasableAssignments() {
         for (F1Car car : assignedCars) {
-            if (car.hasScheduledStrategy()) {
-                throw new IllegalStateException("Driver has a car with a scheduled strategy.");
+            if (car.isSessionActive() || car.hasScheduledStrategy()) {
+                throw new IllegalStateException("Driver has a car with an active session or scheduled strategy.");
             }
         }
     }
