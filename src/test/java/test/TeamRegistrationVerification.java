@@ -5,6 +5,7 @@ import exception.DuplicateEntityException;
 import f1.model.ClassicRaceCar;
 import f1.model.Driver;
 import f1.model.Engineer;
+import f1.model.EngineerSpecialty;
 import f1.model.F1Car;
 import f1.model.HybridRaceCar;
 import f1.model.Team;
@@ -59,8 +60,8 @@ public final class TeamRegistrationVerification {
                 () -> team.addDriver(new Driver("OTHER", "Other driver", "LICENSE-1", 31, "5551234567")));
         expectFailure(DuplicateEntityException.class, () -> team.addEngineer(engineer));
         expectFailure(DuplicateEntityException.class,
-                () -> team.addEngineer(new Engineer("EMPLOYEE-1", "Other engineer", "STRATEGY", 3,
-                        "5551234567")));
+                () -> team.addEngineer(new Engineer("EMPLOYEE-1", "Other engineer",
+                        EngineerSpecialty.AERODYNAMICS, 3, "5551234567")));
         check(team.getDrivers().size() == 1 && team.getDrivers().get(0) == driver,
                 "Duplicate licenses must not replace or add drivers.");
         check(team.getEngineers().size() == 1 && team.getEngineers().get(0) == engineer,
@@ -121,7 +122,8 @@ public final class TeamRegistrationVerification {
     }
 
     private static Engineer engineer(String employeeId) {
-        return new Engineer(employeeId, "Engineer", "POWER_UNIT", 5, "5551234567");
+        return new Engineer(employeeId, "Engineer", EngineerSpecialty.HYBRID_POWER_UNIT, 5,
+                "5551234567");
     }
 
     private static void expectFailure(Class<? extends RuntimeException> expected, Runnable action) {
