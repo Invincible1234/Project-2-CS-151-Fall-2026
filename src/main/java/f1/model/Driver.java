@@ -1,8 +1,9 @@
 package f1.model;
 
+import exception.CapacityExceededException;
 import java.util.ArrayList;
 import java.util.List;
-import util.InstanceLimit;
+import util.Constants;
 import util.Validation;
 
 public class Driver {
@@ -11,9 +12,11 @@ public class Driver {
     private final String licenseNumber;
     private final int age;
     private final List<String> assignedChassisIds;
+    private final List<F1Car> assignedCars;
     private int championshipPoints;
     private String preferredSetup;
     private String phone;
+    private String medicalNotes;
     private boolean medicalClearance;
     private boolean banned;
     private String banReason;
@@ -25,12 +28,13 @@ public class Driver {
         this.age = Validation.requireAge(age);
         this.phone = Validation.requirePhone(phone);
         this.assignedChassisIds = new ArrayList<>();
+        this.assignedCars = new ArrayList<>();
         this.championshipPoints = 0;
         this.preferredSetup = "";
+        this.medicalNotes = "";
         this.medicalClearance = false;
         this.banned = false;
         this.banReason = requireBanPairing(false, "");
-        InstanceLimit.checkAndCount(Driver.class);
     }
 
     public String getDriverId() {
@@ -59,6 +63,99 @@ public class Driver {
 
     public List<String> getAssignedChassisIds() {
         return List.copyOf(assignedChassisIds);
+    }
+
+    public boolean isEligibleForAssignment() {
+        return medicalClearance && !banned && !licenseNumber.isBlank();
+    }
+
+    public void assignToCar(F1Car car) {
+        if (car == null) {
+            throw new IllegalArgumentException("Car is required.");
+        }
+        if (!isEligibleForAssignment()) {
+            throw new IllegalStateException("Driver is not eligible for assignment.");
+        }
+        if (assignedChassisIds.contains(car.getChassisId())) {
+            throw new IllegalStateException("Driver is already assigned to this chassis.");
+        }
+        requireReleasableAssignments();
+        if (assignedCars.size() >= Constants.MAXIMUM_INSTANCES) {
+            throw new CapacityExceededException("Driver assignment capacity has been reached.");
+        }
+        car.assignDriver(this);
+        assignedCars.add(car);
+        assignedChassisIds.add(car.getChassisId());
+    }
+
+    public void unassignFromCar(F1Car car) {
+        if (car == null) {
+            throw new IllegalArgumentException("Car is required.");
+        }
+        int index = assignedChassisIds.indexOf(car.getChassisId());
+        if (index < 0 || assignedCars.get(index) != car) {
+            throw new IllegalArgumentException("Driver is not assigned to this car.");
+        }
+        car.releaseDriver(this);
+        assignedCars.remove(index);
+        assignedChassisIds.remove(index);
+    }
+
+    void requireReleasableAssignments() {
+        for (F1Car car : assignedCars) {
+            if (car.isSessionActive() || car.hasScheduledStrategy()) {
+                throw new IllegalStateException(
+                        "Driver has a car with an active session or scheduled strategy.");
+            }
+        }
+    }
+
+    void releaseAllAssignments() {
+        requireReleasableAssignments();
+        for (F1Car car : List.copyOf(assignedCars)) {
+            unassignFromCar(car);
+        }
+    }
+
+    public boolean requestCarSetup(String preference) {
+        return false;
+    }
+
+    public void setMedicalClearance(boolean cleared, String notes) {
+        if (!cleared) {
+            releaseAllAssignments();
+        }
+        this.medicalClearance = cleared;
+        this.medicalNotes = notes == null ? "" : notes.strip();
+    }
+
+    public void applyBan(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Ban reason is required.");
+        }
+        releaseAllAssignments();
+        this.banned = true;
+        this.banReason = requireBanPairing(true, reason);
+    }
+
+    public void clearBan() {
+        this.banned = false;
+        this.banReason = requireBanPairing(false, "");
+    }
+
+    public void updateContact(String newPhone) {
+    }
+
+    public String getPhone(String role) {
+        return null;
+    }
+
+    public boolean isMedicalClearance(String role) {
+        return false;
+    }
+
+    public boolean isBanned(String role) {
+        return false;
     }
 
     @Override

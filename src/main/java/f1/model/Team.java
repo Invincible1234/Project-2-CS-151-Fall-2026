@@ -1,9 +1,12 @@
 package f1.model;
 
+import exception.CapacityExceededException;
+import exception.DuplicateEntityException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import util.Constants;
 
 public final class Team {
@@ -55,6 +58,79 @@ public final class Team {
         return championshipPoints;
     }
 
+    public double getBudget(UserRole role) {
+        requireTeamPrincipal(role);
+        return budget;
+    }
+
+    public void addBudget(double amount, UserRole role) {
+        requireTeamPrincipal(role);
+        if (!Double.isFinite(amount) || amount <= 0) {
+            throw new IllegalArgumentException("Budget addition must be finite and positive.");
+        }
+        double updatedBudget = budget + amount;
+        if (!Double.isFinite(updatedBudget)) {
+            throw new IllegalArgumentException("Budget addition exceeds the supported amount.");
+        }
+        if (updatedBudget <= budget) {
+            throw new IllegalArgumentException("Budget addition is too small for the current balance.");
+        }
+        budget = updatedBudget;
+    }
+
+    public boolean addCar(F1Car car) {
+        return register(cars, car, F1Car::getChassisId, capacity, "Car");
+    }
+
+    public boolean addDriver(Driver driver) {
+        return register(drivers, driver, Driver::getLicenseNumber,
+                Constants.MAXIMUM_INSTANCES, "Driver");
+    }
+
+    public boolean addEngineer(Engineer engineer) {
+        return register(engineers, engineer, Engineer::getEmployeeId,
+                Constants.MAXIMUM_INSTANCES, "Engineer");
+    }
+
+    public boolean assignDriver(Driver driver, F1Car car) {
+        Driver registeredDriver = findRegistered(drivers, driver, Driver::getLicenseNumber, "Driver");
+        F1Car registeredCar = findRegistered(cars, car, F1Car::getChassisId, "Car");
+        if (registeredDriver == null || registeredCar == null) {
+            throw new IllegalArgumentException("Driver and car must be registered with this team.");
+        }
+        registeredDriver.assignToCar(registeredCar);
+        return true;
+    }
+
+    public boolean removeCar(F1Car car) {
+        F1Car registered = findRegistered(cars, car, F1Car::getChassisId, "Car");
+        if (registered == null) {
+            return false;
+        }
+        if (registered.hasScheduledStrategy() || registered.hasActiveAssignments()) {
+            throw new IllegalStateException("Cannot remove a car with assignments or a scheduled strategy.");
+        }
+        return cars.removeIf(existing -> existing == registered);
+    }
+
+    public boolean removeDriver(Driver driver) {
+        Driver registered = findRegistered(drivers, driver, Driver::getLicenseNumber, "Driver");
+        if (registered == null) {
+            return false;
+        }
+        registered.releaseAllAssignments();
+        return drivers.removeIf(existing -> existing == registered);
+    }
+
+    public boolean removeEngineer(Engineer engineer) {
+        Engineer registered = findRegistered(engineers, engineer, Engineer::getEmployeeId, "Engineer");
+        if (registered == null) {
+            return false;
+        }
+        registered.releaseFromCar();
+        return engineers.removeIf(existing -> existing == registered);
+    }
+
     public List<F1Car> getCars() {
         return List.copyOf(cars);
     }
@@ -92,6 +168,43 @@ public final class Team {
                 + ", engineers=" + engineers.size()
                 + ", championshipPoints=" + championshipPoints
                 + ", raceResults=" + raceResults.size() + ", strategies=" + strategies.size() + "}";
+    }
+
+    private static void requireTeamPrincipal(UserRole role) {
+        if (role != UserRole.TEAM_PRINCIPAL) {
+            throw new SecurityException("Team principal access is required.");
+        }
+    }
+
+    private static <T> T findRegistered(List<T> members, T member,
+            Function<T, String> identity, String type) {
+        if (member == null) {
+            throw new IllegalArgumentException(type + " is required.");
+        }
+        String memberId = requireText(identity.apply(member), type + " identity");
+        for (T existing : members) {
+            if (memberId.equals(requireText(identity.apply(existing), type + " identity"))) {
+                return existing;
+            }
+        }
+        return null;
+    }
+
+    private static <T> boolean register(List<T> members, T member,
+            Function<T, String> identity, int limit, String type) {
+        if (member == null) {
+            throw new IllegalArgumentException(type + " is required.");
+        }
+        String memberId = requireText(identity.apply(member), type + " identity");
+        for (T existing : members) {
+            if (memberId.equals(requireText(identity.apply(existing), type + " identity"))) {
+                throw new DuplicateEntityException(type + " is already registered with this team.");
+            }
+        }
+        if (members.size() >= limit) {
+            throw new CapacityExceededException(type + " capacity of " + limit + " has been reached.");
+        }
+        return members.add(member);
     }
 
     private static String requireText(String value, String fieldName) {
