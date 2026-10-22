@@ -3,6 +3,8 @@ package f1.model;
 import exception.CapacityExceededException;
 import java.util.ArrayList;
 import java.util.List;
+import util.AccessContext;
+import util.AccessPolicy;
 import util.Constants;
 import util.Validation;
 
@@ -72,6 +74,18 @@ public class Driver {
         return List.copyOf(assignedChassisIds);
     }
 
+    public String phoneFor(AccessContext caller) {
+        return AccessPolicy.visiblePhone(caller, driverId, phone);
+    }
+
+    public String medicalNotesFor(AccessContext caller) {
+        return AccessPolicy.visibleMedicalNotes(caller, driverId, medicalNotes);
+    }
+
+    public String banReasonFor(AccessContext caller) {
+        return AccessPolicy.visibleBanReason(caller, driverId, banReason);
+    }
+
     public boolean isEligibleForAssignment() {
         return medicalClearance && !banned && !licenseNumber.isBlank();
     }
@@ -125,7 +139,8 @@ public class Driver {
     }
 
     public boolean requestCarSetup(String preference) {
-        return false;
+        this.preferredSetup = Validation.requireText(preference, "Setup preference");
+        return true;
     }
 
     public void setMedicalClearance(boolean cleared, String notes) {
@@ -151,18 +166,7 @@ public class Driver {
     }
 
     public void updateContact(String newPhone) {
-    }
-
-    public String getPhone(String role) {
-        return null;
-    }
-
-    public boolean isMedicalClearance(String role) {
-        return false;
-    }
-
-    public boolean isBanned(String role) {
-        return false;
+        this.phone = Validation.requirePhone(newPhone);
     }
 
     @Override
