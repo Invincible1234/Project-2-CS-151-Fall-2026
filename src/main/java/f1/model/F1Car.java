@@ -4,8 +4,13 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Objects;
+import model.WeatherCondition;
 
 public abstract class F1Car implements Raceable {
+    public abstract double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather);
+
+    public abstract String getRegulatoryComplianceNotes();
+
     private static final double MAINTENANCE_INTERVAL_KM = 500.0;
     private final String chassisId;
     private String teamName;
@@ -262,6 +267,45 @@ public abstract class F1Car implements Raceable {
         }
         return "Maintenance interval: " + Math.max(0, MAINTENANCE_INTERVAL_KM - mileageSinceService)
                 + " km remaining.";
+    }
+
+    protected final double performanceBaseline(Circuit circuit, WeatherCondition weather) {
+        if (circuit == null || weather == null) {
+            throw new IllegalArgumentException("Circuit and weather are required for performance estimates.");
+        }
+        if (permanentlyDecommissioned || isDueForMaintenance() || !outOfServiceReason.isEmpty()) {
+            throw new IllegalStateException("Performance estimates require a serviceable car.");
+        }
+        return circuit.estimateBaseLapTime();
+    }
+
+    protected static double weatherPenaltyFraction(WeatherCondition weather) {
+        return switch (weather) {
+            case CLEAR -> 0;
+            case CLOUDY -> 0.01;
+            case RAIN -> 0.08;
+            case WET -> 0.15;
+            case EXTREME_HEAT -> 0.03;
+        };
+    }
+
+    protected final double aeroDeltaFraction(Circuit circuit, WeatherCondition weather) {
+        if (currentAeroConfig == null || currentAeroConfig == AeroConfiguration.BALANCED) {
+            return 0;
+        }
+        boolean wet = weather == WeatherCondition.RAIN || weather == WeatherCondition.WET;
+        if (currentAeroConfig == AeroConfiguration.LOW_DRAG) {
+            return circuit.hasLongStraights() && !wet ? -0.015 : 0.015;
+        }
+        return !circuit.hasLongStraights() || wet ? -0.02 : 0.015;
+    }
+
+    protected static double lapTimeDelta(double baseline, double fraction) {
+        double delta = baseline * fraction;
+        if (!Double.isFinite(delta) || !Double.isFinite(baseline + delta) || baseline + delta <= 0) {
+            throw new IllegalArgumentException("Circuit estimate exceeds the supported lap-time range.");
+        }
+        return delta;
     }
 
     public void applyAeroUpgrade(String upgrade) {
