@@ -1,43 +1,93 @@
 package f1.model;
 
+import java.util.ArrayList;
 import java.util.List;
+import util.InstanceLimit;
+import util.Validation;
 
 public class Driver {
-    private String driverId;
-    private String name;
-    private String licenseNumber;
-    private int age;
-    private List<String> assignedChassisIds;
+    private final String driverId;
+    private final String name;
+    private final String licenseNumber;
+    private final int age;
+    private final List<String> assignedChassisIds;
     private int championshipPoints;
     private String preferredSetup;
     private String phone;
     private boolean medicalClearance;
-    private boolean isBanned;
+    private boolean banned;
     private String banReason;
 
-    public Driver(String driverId, String name, String licenseNumber, int age, String phone) { }
+    public Driver(String driverId, String name, String licenseNumber, int age, String phone) {
+        this.driverId = Validation.requireText(driverId, "Driver ID");
+        this.name = Validation.requireText(name, "Driver name");
+        this.licenseNumber = Validation.requireText(licenseNumber, "License number");
+        this.age = Validation.requireAge(age);
+        this.phone = Validation.requirePhone(phone);
+        this.assignedChassisIds = new ArrayList<>();
+        this.championshipPoints = 0;
+        this.preferredSetup = "";
+        this.medicalClearance = false;
+        this.banned = false;
+        this.banReason = requireBanPairing(false, "");
+        InstanceLimit.checkAndCount(Driver.class);
+    }
 
-    public boolean requestCarSetup(String preference) { return false; }
+    public String getDriverId() {
+        return driverId;
+    }
 
-    public void completeRace(int finishingPosition, Circuit circuit) { }
+    public String getName() {
+        return name;
+    }
 
-    public void setMedicalClearance(boolean cleared, String notes) { }
+    public String getLicenseNumber() {
+        return licenseNumber;
+    }
 
-    public void applyBan(String reason) { }
+    public int getAge() {
+        return age;
+    }
 
-    public void clearBan() { }
+    public int getChampionshipPoints() {
+        return championshipPoints;
+    }
 
-    public void updateContact(String newPhone) { }
+    public String getPreferredSetup() {
+        return preferredSetup;
+    }
 
-    public String getPhone(String role) { return null; }
+    public List<String> getAssignedChassisIds() {
+        return List.copyOf(assignedChassisIds);
+    }
 
-    public boolean isMedicalClearance(String role) { return false; }
+    @Override
+    public boolean equals(Object other) {
+        return this == other || other instanceof Driver driver
+                && licenseNumber.equals(driver.licenseNumber);
+    }
 
-    public boolean isBanned(String role) { return false; }
+    @Override
+    public int hashCode() {
+        return licenseNumber.hashCode();
+    }
 
-    public String toString() { return ""; }
+    @Override
+    public String toString() {
+        return "Driver{driverId='" + driverId + "', name='" + name
+                + "', licenseNumber='" + licenseNumber + "', age=" + age
+                + ", championshipPoints=" + championshipPoints
+                + ", assignments=" + assignedChassisIds.size() + "}";
+    }
 
-    public boolean equals(Object other) { return false; }
-
-    public int hashCode() { return 0; }
+    private static String requireBanPairing(boolean banned, String banReason) {
+        String validatedReason = banReason == null ? "" : banReason.strip();
+        if (banned && validatedReason.isEmpty()) {
+            throw new IllegalArgumentException("A banned driver must have a ban reason.");
+        }
+        if (!banned && !validatedReason.isEmpty()) {
+            throw new IllegalArgumentException("An unbanned driver cannot have a ban reason.");
+        }
+        return validatedReason;
+    }
 }
