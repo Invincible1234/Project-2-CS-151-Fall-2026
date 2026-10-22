@@ -1,5 +1,7 @@
 package f1.model;
 
+import util.AccessContext;
+import util.AccessPolicy;
 import util.Validation;
 
 public class Engineer {
@@ -57,11 +59,7 @@ public class Engineer {
         if (!isAvailable || assignedCar != null) {
             throw new IllegalStateException("Engineer is already assigned or unavailable.");
         }
-        boolean compatible = car instanceof HybridRaceCar
-                && specialty == EngineerSpecialty.HYBRID_POWER_UNIT
-                || car instanceof ClassicRaceCar
-                && specialty == EngineerSpecialty.CLASSIC_RESTORATION;
-        if (!compatible) {
+        if (!specialtyMatches(car)) {
             throw new IllegalArgumentException("Engineer specialty is incompatible with this car.");
         }
         car.assignEngineer(this);
@@ -76,7 +74,11 @@ public class Engineer {
     }
 
     public boolean requestParts(String partType, int quantity) {
-        return false;
+        Validation.requireText(partType, "Part type");
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Part quantity must be positive.");
+        }
+        return assignedCar != null;
     }
 
     public void releaseFromCar() {
@@ -89,10 +91,36 @@ public class Engineer {
     }
 
     public void updateSpecialty(EngineerSpecialty newSpecialty) {
+        if (newSpecialty == null) {
+            throw new IllegalArgumentException("Engineer specialty is required.");
+        }
+        if (assignedCar != null) {
+            throw new IllegalStateException("Cannot change the specialty of an assigned engineer.");
+        }
+        this.specialty = newSpecialty;
     }
 
-    public String getPhone(String role) {
-        return null;
+    public void updateContact(String newPhone) {
+        this.phone = Validation.requirePhone(newPhone);
+    }
+
+    public String phoneFor(AccessContext caller) {
+        return AccessPolicy.visiblePhone(caller, employeeId, phone);
+    }
+
+    private boolean specialtyMatches(F1Car car) {
+        if (car instanceof HybridRaceCar hybrid) {
+            if (hybrid.requiresSpecialistEngineer()) {
+                return specialty == EngineerSpecialty.HYBRID_POWER_UNIT;
+            }
+            return specialty != EngineerSpecialty.CLASSIC_RESTORATION;
+        }
+        if (car instanceof ClassicRaceCar) {
+            return specialty == EngineerSpecialty.CLASSIC_RESTORATION
+                    || specialty == EngineerSpecialty.AERODYNAMICS
+                    || specialty == EngineerSpecialty.RACE_ENGINEERING;
+        }
+        return false;
     }
 
     @Override
