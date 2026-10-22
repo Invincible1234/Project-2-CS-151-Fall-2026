@@ -2,6 +2,7 @@ package f1.model;
 
 import java.time.Clock;
 import java.util.Locale;
+import model.WeatherCondition;
 
 public class ClassicRaceCar extends F1Car {
     private int originalityScore;
@@ -54,6 +55,26 @@ public class ClassicRaceCar extends F1Car {
 
     public String getOwnershipRecord() {
         return ownershipRecord + " (current team: " + getTeamName() + ")";
+    }
+
+    @Override
+    public double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather) {
+        double baseline = performanceBaseline(circuit, weather);
+        double powerPenalty = 0.18 * (300.0 / (300.0 + powerLimitKw));
+        double authenticityPenalty = (100 - originalityScore) / 100.0 * 0.03;
+        double fraction = weatherPenaltyFraction(weather) * 1.25
+                + aeroDeltaFraction(circuit, weather) + powerPenalty + authenticityPenalty
+                + (preservationModeEnabled ? 0.04 : 0);
+        return lapTimeDelta(baseline, fraction);
+    }
+
+    @Override
+    public String getRegulatoryComplianceNotes() {
+        return "Classic car; originality " + originalityScore + "/100; power limit "
+                + powerLimitKw + " kW; hybrid energy deployment prohibited; "
+                + (preservationModeEnabled ? "preservation: practice demonstrations only" : "standard classic operation")
+                + (restorationInProgress ? "; unavailable during restoration" : "")
+                + (isPermanentlyDecommissioned() ? "; permanently decommissioned" : "");
     }
 
     public void applyPreservationMode() {
