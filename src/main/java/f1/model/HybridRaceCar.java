@@ -161,14 +161,30 @@ public class HybridRaceCar extends F1Car {
 
     @Override
     public double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather) {
-        double baseline = performanceBaseline(circuit, weather);
         double remainingDeployment = isSessionActive() && !lapCompleted
                 ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ : MAX_DEPLOYMENT_PER_LAP_MJ;
         double usableEnergy = Math.min(currentEnergyMJ, remainingDeployment);
+        return calculateLapTimeDelta(circuit, weather, usableEnergy);
+    }
+
+    public double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather, double plannedDeploymentMj) {
+        double baseline = performanceBaseline(circuit, weather);
+        validatePower(mguKPowerKw);
+        if (!Double.isFinite(plannedDeploymentMj) || plannedDeploymentMj < 0) {
+            throw new IllegalArgumentException("Planned deployment must be finite and nonnegative.");
+        }
+        double remainingDeployment = isSessionActive() && !lapCompleted
+                ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ : MAX_DEPLOYMENT_PER_LAP_MJ;
+        if (plannedDeploymentMj > remainingDeployment) {
+            throw new RegulatoryViolationException("Planned deployment exceeds the remaining lap allowance.");
+        }
+        if (plannedDeploymentMj > currentEnergyMJ) {
+            throw new IllegalArgumentException("Planned deployment exceeds current battery charge.");
+        }
         double powerFraction = mguKPowerKw / MAX_MGU_K_POWER_KW;
         boolean wet = weather == WeatherCondition.RAIN || weather == WeatherCondition.WET;
         // Simplified simulation: positive deltas are slower than the circuit baseline.
-        double boostBenefit = usableEnergy / MAX_DEPLOYMENT_PER_LAP_MJ * powerFraction
+        double boostBenefit = plannedDeploymentMj / MAX_DEPLOYMENT_PER_LAP_MJ * powerFraction
                 * (circuit.hasLongStraights() ? 0.06 : 0.015) * (wet ? 0.25 : 1);
         double fraction = weatherPenaltyFraction(weather) + aeroDeltaFraction(circuit, weather)
                 + (1 - powerFraction) * 0.025 - boostBenefit;
