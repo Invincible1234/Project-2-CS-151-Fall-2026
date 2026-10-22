@@ -143,6 +143,32 @@ public final class Team {
                 Constants.MAXIMUM_INSTANCES, "Engineer");
     }
 
+    public boolean addStrategy(RaceStrategy strategy) {
+        if (strategy == null) {
+            throw new IllegalArgumentException("Strategy is required.");
+        }
+        if (strategies.contains(strategy)) {
+            throw new DuplicateEntityException("Strategy is already registered for this chassis.");
+        }
+        if (strategies.size() >= Constants.MAXIMUM_INSTANCES) {
+            throw new CapacityExceededException("Strategy capacity has been reached.");
+        }
+        if (strategy.getRegisteredTeam() != null) {
+            throw new IllegalStateException("Strategy is already registered with a team.");
+        }
+        F1Car car = strategy.getCar();
+        Engineer engineer = strategy.getEngineer();
+        if (findRegistered(cars, car, F1Car::getChassisId, "Car") != car
+                || car.getRegisteredTeam() != this) {
+            throw new IllegalArgumentException("Strategy must reference this team's registered car.");
+        }
+        if (findRegistered(engineers, engineer, Engineer::getEmployeeId, "Engineer") != engineer) {
+            throw new IllegalArgumentException("Strategy must reference this team's registered engineer.");
+        }
+        strategy.registerWithTeam(this);
+        return strategies.add(strategy);
+    }
+
     public boolean assignDriver(Driver driver, F1Car car) {
         Driver registeredDriver = findRegistered(drivers, driver, Driver::getLicenseNumber, "Driver");
         F1Car registeredCar = findRegistered(cars, car, F1Car::getChassisId, "Car");
