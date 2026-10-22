@@ -9,7 +9,16 @@ public class Engineer {
     private int experienceYears;
     private String phone;
 
-    public Engineer(String employeeId, String name, String specialty, int experienceYears, String phone) { }
+    public Engineer(String employeeId, String name, String specialty, int experienceYears, String phone) {
+        if (employeeId == null || employeeId.isBlank()) {
+            throw new IllegalArgumentException("Employee ID is required.");
+        }
+        this.employeeId = employeeId.strip();
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
 
     public boolean assignToCar(F1Car car) { return false; }
 

@@ -15,7 +15,16 @@ public class Driver {
     private boolean isBanned;
     private String banReason;
 
-    public Driver(String driverId, String name, String licenseNumber, int age, String phone) { }
+    public Driver(String driverId, String name, String licenseNumber, int age, String phone) {
+        if (licenseNumber == null || licenseNumber.isBlank()) {
+            throw new IllegalArgumentException("License number is required.");
+        }
+        this.licenseNumber = licenseNumber.strip();
+    }
+
+    public String getLicenseNumber() {
+        return licenseNumber;
+    }
 
     public boolean requestCarSetup(String preference) { return false; }
 
