@@ -1,5 +1,6 @@
 package f1.model;
 
+import exception.InvalidStrategyException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -101,8 +102,69 @@ public final class RaceStrategy {
         return expectedWeather;
     }
 
+    public double getRecommendedEnergyDeploymentMj() {
+        if (!(car instanceof HybridRaceCar hybrid)) {
+            return 0;
+        }
+        double recommendation = switch (expectedWeather) {
+            case CLEAR, CLOUDY -> 4.0;
+            case RAIN -> 1.0;
+            case WET -> 0.5;
+            case EXTREME_HEAT -> 2.0;
+        };
+        double remainingDeployment = hybrid.isSessionActive() && !hybrid.isLapCompleted()
+                ? Math.max(0, 4.0 - hybrid.getDeployedThisLapMJ()) : 4.0;
+        return Math.min(recommendation, Math.min(remainingDeployment, hybrid.getCurrentEnergyMJ()));
+    }
+
+    public void selectTireCompound(TireCompound compound) {
+        requireEditableDraft();
+        requireCompatibleTires(compound, expectedWeather);
+        if (tireCompound != compound) {
+            tireCompound = compound;
+        }
+    }
+
+    public void adjustForWeather(WeatherCondition weather) {
+        requireEditableDraft();
+        if (weather == null) {
+            throw new IllegalArgumentException("Weather is required.");
+        }
+        TireCompound recommendedTires = switch (weather) {
+            case CLEAR, CLOUDY -> TireCompound.MEDIUM;
+            case RAIN -> TireCompound.INTERMEDIATE;
+            case WET -> TireCompound.WET;
+            case EXTREME_HEAT -> TireCompound.HARD;
+        };
+        if (expectedWeather != weather || tireCompound != recommendedTires) {
+            expectedWeather = weather;
+            tireCompound = recommendedTires;
+        }
+    }
+
     public String getCancellationReason() {
         return cancellationReason;
+    }
+
+    private void requireEditableDraft() {
+        if (status != StrategyStatus.DRAFT) {
+            throw new InvalidStrategyException("Only a draft strategy can change planning decisions.");
+        }
+    }
+
+    private static void requireCompatibleTires(TireCompound compound, WeatherCondition weather) {
+        if (compound == null) {
+            throw new InvalidStrategyException("Select a tire compound before finalizing the strategy.");
+        }
+        boolean compatible = switch (weather) {
+            case CLEAR, CLOUDY, EXTREME_HEAT -> compound == TireCompound.SOFT
+                    || compound == TireCompound.MEDIUM || compound == TireCompound.HARD;
+            case RAIN -> compound == TireCompound.INTERMEDIATE || compound == TireCompound.WET;
+            case WET -> compound == TireCompound.WET;
+        };
+        if (!compatible) {
+            throw new InvalidStrategyException("Tire compound is incompatible with the expected weather.");
+        }
     }
 
     void registerWithTeam(Team team) {
