@@ -37,6 +37,17 @@ public class HybridRaceCar extends F1Car {
         return true;
     }
 
+    public void chargeBatteryFromRecovery(double energyMJ) {
+        if (!Double.isFinite(energyMJ) || energyMJ <= 0) {
+            throw new IllegalArgumentException("Recovered energy must be finite and positive.");
+        }
+        double updatedEnergyMJ = currentEnergyMJ + energyMJ;
+        if (!Double.isFinite(updatedEnergyMJ) || updatedEnergyMJ > batteryCapacityMJ) {
+            throw new IllegalArgumentException("Recovered energy would exceed battery capacity.");
+        }
+        currentEnergyMJ = updatedEnergyMJ;
+    }
+
     public boolean requiresSpecialistEngineer() {
         return true;
     }
