@@ -11,11 +11,26 @@ public abstract class F1Car {
     private String powerUnitType;
     private String currentAeroConfig;
     private boolean permanentlyDecommissioned;
+    private String scheduledStrategy;
 
     protected F1Car(String chassisId, String teamName, String model, int year) {
         if (chassisId == null || teamName == null || model == null) {
             throw new IllegalArgumentException("Chassis ID, team, and model are required.");
+        
+    public String getScheduledStrategy() {
+        return scheduledStrategy;
+    }
+
+    public void scheduleStrategy(String strategy) {
+        if (strategy == null || strategy.isBlank()) {
+            throw new IllegalArgumentException("Strategy is required.");
         }
+        if (permanentlyDecommissioned) {
+            throw new IllegalArgumentException("Cannot schedule strategy for decommissioned car.");
+        }
+        this.scheduledStrategy = strategy.trim();
+    }
+}
         if (chassisId.isBlank() || teamName.isBlank() || model.isBlank() || year < 1950) {
             throw new IllegalArgumentException("Names must be nonblank and year must be at least 1950.");
         }
@@ -27,6 +42,7 @@ public abstract class F1Car {
         this.powerUnitType = "";
         this.currentAeroConfig = "";
         this.permanentlyDecommissioned = false;
+        this.scheduledStrategy = "";
     }
 
     public String getChassisId() {
@@ -105,5 +121,19 @@ public abstract class F1Car {
             throw new IllegalArgumentException("Cannot upgrade a decommissioned car.");
         }
         this.currentAeroConfig = upgrade.trim();
+    }
+
+    public String getScheduledStrategy() {
+        return scheduledStrategy;
+    }
+
+    public void scheduleStrategy(String strategy) {
+        if (strategy == null || strategy.isBlank()) {
+            throw new IllegalArgumentException("Strategy is required.");
+        }
+        if (permanentlyDecommissioned) {
+            throw new IllegalArgumentException("Cannot schedule strategy for decommissioned car.");
+        }
+        this.scheduledStrategy = strategy.trim();
     }
 }
