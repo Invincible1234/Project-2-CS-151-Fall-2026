@@ -6,7 +6,7 @@ import java.util.List;
 import util.Constants;
 
 public class Driver {
-    private String driverId;
+    private final String driverId;
     private String name;
     private String licenseNumber;
     private int age;
@@ -21,14 +21,33 @@ public class Driver {
     private String medicalNotes;
 
     public Driver(String driverId, String name, String licenseNumber, int age, String phone) {
+        if (driverId == null || driverId.isBlank()) {
+            throw new IllegalArgumentException("Driver ID is required.");
+        }
         if (licenseNumber == null || licenseNumber.isBlank()) {
             throw new IllegalArgumentException("License number is required.");
         }
+        this.driverId = driverId.strip();
         this.licenseNumber = licenseNumber.strip();
         this.assignedChassisIds = new ArrayList<>();
         this.assignedCars = new ArrayList<>();
         this.banReason = "";
         this.medicalNotes = "";
+    }
+
+    public String getDriverId() {
+        return driverId;
+    }
+
+    public int getChampionshipPoints() {
+        return championshipPoints;
+    }
+
+    final void addChampionshipPoints(int points) {
+        if (points < 0 || points > Integer.MAX_VALUE - championshipPoints) {
+            throw new IllegalArgumentException("Championship points must fit the supported range.");
+        }
+        championshipPoints += points;
     }
 
     public String getLicenseNumber() {
