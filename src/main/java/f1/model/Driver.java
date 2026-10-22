@@ -45,6 +45,13 @@ public class Driver {
         return name;
     }
 
+    final void addChampionshipPoints(int points) {
+        if (points < 0 || points > Integer.MAX_VALUE - championshipPoints) {
+            throw new IllegalArgumentException("Championship points must fit the supported range.");
+        }
+        championshipPoints += points;
+    }
+
     public String getLicenseNumber() {
         return licenseNumber;
     }
