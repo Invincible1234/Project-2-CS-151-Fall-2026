@@ -162,6 +162,33 @@ public class Driver {
         this.phone = Validation.requirePhone(newPhone);
     }
 
+    public void completeRace(int finishingPosition, Circuit circuit) {
+        if (circuit == null) {
+            throw new IllegalArgumentException("Circuit is required.");
+        }
+        int position = Validation.requirePosition(finishingPosition);
+        if (banned) {
+            throw new IllegalArgumentException("A banned driver cannot complete a race.");
+        }
+        championshipPoints += pointsFor(position);
+    }
+
+    private static int pointsFor(int position) {
+        return switch (position) {
+            case 1 -> 25;
+            case 2 -> 18;
+            case 3 -> 15;
+            case 4 -> 12;
+            case 5 -> 10;
+            case 6 -> 8;
+            case 7 -> 6;
+            case 8 -> 4;
+            case 9 -> 2;
+            case 10 -> 1;
+            default -> 0;
+        };
+    }
+
     @Override
     public boolean equals(Object other) {
         return this == other || other instanceof Driver driver
