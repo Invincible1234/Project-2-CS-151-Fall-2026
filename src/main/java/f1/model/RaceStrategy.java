@@ -20,6 +20,7 @@ public final class RaceStrategy {
     private Team registeredTeam;
     private StrategyStatus status;
     private double estimatedLapTimeDelta;
+    private boolean lapTimeEstimateFinalized;
     private TireCompound tireCompound;
     private String energyDeploymentPlan;
     private final List<String> partsUsed;
@@ -86,6 +87,10 @@ public final class RaceStrategy {
         return estimatedLapTimeDelta;
     }
 
+    public boolean hasFinalizedLapTimeEstimate() {
+        return lapTimeEstimateFinalized;
+    }
+
     public TireCompound getTireCompound() {
         return tireCompound;
     }
@@ -122,6 +127,7 @@ public final class RaceStrategy {
         requireCompatibleTires(compound, expectedWeather);
         if (tireCompound != compound) {
             tireCompound = compound;
+            invalidateLapTimeEstimate();
         }
     }
 
@@ -139,7 +145,37 @@ public final class RaceStrategy {
         if (expectedWeather != weather || tireCompound != recommendedTires) {
             expectedWeather = weather;
             tireCompound = recommendedTires;
+            invalidateLapTimeEstimate();
         }
+    }
+
+    public double finalizeLapTimeImpact(Circuit circuit) {
+        requireEditableDraft();
+        if (circuit == null || circuit != this.circuit) {
+            throw new IllegalArgumentException("Use the circuit linked to this strategy.");
+        }
+        requireCompatibleTires(tireCompound, expectedWeather);
+        double baseline = circuit.estimateBaseLapTime();
+        if (!Double.isFinite(baseline) || baseline <= 0) {
+            throw new InvalidStrategyException("Circuit baseline must be finite and positive.");
+        }
+        double carDelta = car.calculateLapTimeDelta(circuit, expectedWeather);
+        double tireFraction = switch (tireCompound) {
+            case SOFT -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.03 : -0.015;
+            case MEDIUM -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.01 : 0;
+            case HARD -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0 : 0.01;
+            case INTERMEDIATE -> 0;
+            case WET -> expectedWeather == WeatherCondition.RAIN ? 0.02 : 0;
+        };
+        double delta = carDelta + baseline * tireFraction;
+        double projectedLapTime = baseline + delta;
+        if (!Double.isFinite(carDelta) || !Double.isFinite(delta)
+                || !Double.isFinite(projectedLapTime) || projectedLapTime <= 0) {
+            throw new InvalidStrategyException("Estimated lap time must be finite and positive.");
+        }
+        estimatedLapTimeDelta = delta;
+        lapTimeEstimateFinalized = true;
+        return delta;
     }
 
     public String getCancellationReason() {
@@ -165,6 +201,11 @@ public final class RaceStrategy {
         if (!compatible) {
             throw new InvalidStrategyException("Tire compound is incompatible with the expected weather.");
         }
+    }
+
+    private void invalidateLapTimeEstimate() {
+        estimatedLapTimeDelta = 0;
+        lapTimeEstimateFinalized = false;
     }
 
     void registerWithTeam(Team team) {
