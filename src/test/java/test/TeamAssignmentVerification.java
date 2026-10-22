@@ -4,6 +4,7 @@ import exception.CapacityExceededException;
 import f1.model.ClassicRaceCar;
 import f1.model.Driver;
 import f1.model.Engineer;
+import f1.model.EngineerSpecialty;
 import f1.model.F1Car;
 import f1.model.HybridRaceCar;
 import f1.model.Team;
@@ -168,8 +169,8 @@ public final class TeamAssignmentVerification {
         expectFailure(IllegalStateException.class, () -> team.removeEngineer(other));
         check(team.getEngineers().size() == 1 && car.getAssignedEngineer() == other
                 && !other.isAvailable(), "Scheduled-strategy rejection must preserve engineer state.");
-        Engineer classicEngineer = new Engineer("CLASSIC", "Engineer", "CLASSIC_RESTORATION", 5,
-                "5551234567");
+        Engineer classicEngineer = new Engineer("CLASSIC", "Engineer",
+                EngineerSpecialty.CLASSIC_RESTORATION, 5, "5551234567");
         expectFailure(IllegalArgumentException.class, () -> classicEngineer.assignToCar(otherCar));
         F1Car classic = new ClassicRaceCar("CLASSIC", "Apex", "Classic", 1970, 90, 2020, 300);
         check(classicEngineer.assignToCar(classic), "Restoration engineer must be eligible for classic cars.");
@@ -242,7 +243,7 @@ public final class TeamAssignmentVerification {
     }
 
     private static Engineer engineer(String id) {
-        return new Engineer(id, "Engineer", "HYBRID_POWER_UNIT", 5, "5551234567");
+        return new Engineer(id, "Engineer", EngineerSpecialty.HYBRID_POWER_UNIT, 5, "5551234567");
     }
 
     private static void expectFailure(Class<? extends RuntimeException> expected, Runnable action) {

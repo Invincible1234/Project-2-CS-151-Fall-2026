@@ -2,6 +2,7 @@ package test;
 
 import exception.RegulatoryViolationException;
 import f1.model.Engineer;
+import f1.model.EngineerSpecialty;
 import f1.model.HybridRaceCar;
 import f1.model.HybridUpgrade;
 import f1.model.SessionType;
@@ -29,8 +30,8 @@ public class HybridSpecialistVerification {
 
     private static void verifySpecialists() {
         HybridRaceCar car = car("ASSIGN");
-        Engineer specialist = engineer("E1", "HYBRID_POWER_UNIT");
-        Engineer wrong = engineer("WRONG", "CLASSIC_RESTORATION");
+        Engineer specialist = engineer("E1", EngineerSpecialty.HYBRID_POWER_UNIT);
+        Engineer wrong = engineer("WRONG", EngineerSpecialty.CLASSIC_RESTORATION);
         expect(IllegalArgumentException.class, () -> car.lockForSpecialist(null));
         expect(IllegalArgumentException.class, () -> car.lockForSpecialist(wrong));
         check(wrong.isAvailable() && car.getAssignedEngineer() == null,
@@ -73,7 +74,7 @@ public class HybridSpecialistVerification {
     private static void verifyUpgrades() {
         HybridRaceCar car = car("UPGRADES");
         expect(IllegalStateException.class, () -> car.applyHybridUpgrade("PERFORMANCE"));
-        car.lockForSpecialist(engineer("E2", "HYBRID_POWER_UNIT"));
+        car.lockForSpecialist(engineer("E2", EngineerSpecialty.HYBRID_POWER_UNIT));
         car.prepareForSession(SessionType.PRACTICE);
         car.startSession();
         car.deployEnergyBoost(1);
@@ -116,7 +117,7 @@ public class HybridSpecialistVerification {
         return new HybridRaceCar(id, "Team", "Hybrid", 2026, 4, 3);
     }
 
-    private static Engineer engineer(String id, String specialty) {
+    private static Engineer engineer(String id, EngineerSpecialty specialty) {
         return new Engineer(id, "Engineer", specialty, 5, "5551234567");
     }
 

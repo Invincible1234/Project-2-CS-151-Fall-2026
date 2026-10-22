@@ -1,32 +1,45 @@
 package f1.model;
 
-import java.util.Locale;
+import util.Validation;
 
 public class Engineer {
-    private String employeeId;
-    private String name;
-    private String specialty;
+    private final String employeeId;
+    private final String name;
+    private EngineerSpecialty specialty;
     private boolean isAvailable;
     private String assignedChassisId;
-    private int experienceYears;
+    private final int experienceYears;
     private String phone;
     private F1Car assignedCar;
 
-    public Engineer(String employeeId, String name, String specialty, int experienceYears, String phone) {
-        if (employeeId == null || employeeId.isBlank()) {
-            throw new IllegalArgumentException("Employee ID is required.");
-        }
-        this.employeeId = employeeId.strip();
-        if (specialty == null || specialty.isBlank()) {
+    public Engineer(String employeeId, String name, EngineerSpecialty specialty,
+            int experienceYears, String phone) {
+        this.employeeId = Validation.requireText(employeeId, "Employee ID");
+        this.name = Validation.requireText(name, "Engineer name");
+        if (specialty == null) {
             throw new IllegalArgumentException("Engineer specialty is required.");
         }
-        this.specialty = specialty.strip().toUpperCase(Locale.ROOT);
+        this.specialty = specialty;
+        this.experienceYears = Validation.requireExperienceYears(experienceYears);
+        this.phone = Validation.requirePhone(phone);
         this.isAvailable = true;
         this.assignedChassisId = "";
     }
 
     public String getEmployeeId() {
         return employeeId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public EngineerSpecialty getSpecialty() {
+        return specialty;
+    }
+
+    public int getExperienceYears() {
+        return experienceYears;
     }
 
     public boolean isAvailable() {
@@ -44,8 +57,10 @@ public class Engineer {
         if (!isAvailable || assignedCar != null) {
             throw new IllegalStateException("Engineer is already assigned or unavailable.");
         }
-        boolean compatible = car instanceof HybridRaceCar && "HYBRID_POWER_UNIT".equals(specialty)
-                || car instanceof ClassicRaceCar && "CLASSIC_RESTORATION".equals(specialty);
+        boolean compatible = car instanceof HybridRaceCar
+                && specialty == EngineerSpecialty.HYBRID_POWER_UNIT
+                || car instanceof ClassicRaceCar
+                && specialty == EngineerSpecialty.CLASSIC_RESTORATION;
         if (!compatible) {
             throw new IllegalArgumentException("Engineer specialty is incompatible with this car.");
         }
@@ -56,9 +71,13 @@ public class Engineer {
         return true;
     }
 
-    public boolean completeSetup(RaceStrategy strategy) { return false; }
+    public boolean completeSetup(RaceStrategy strategy) {
+        return false;
+    }
 
-    public boolean requestParts(String partType, int quantity) { return false; }
+    public boolean requestParts(String partType, int quantity) {
+        return false;
+    }
 
     public void releaseFromCar() {
         if (assignedCar != null) {
@@ -69,13 +88,28 @@ public class Engineer {
         isAvailable = true;
     }
 
-    public void updateSpecialty(String newSpecialty) { }
+    public void updateSpecialty(EngineerSpecialty newSpecialty) {
+    }
 
-    public String getPhone(String role) { return null; }
+    public String getPhone(String role) {
+        return null;
+    }
 
-    public String toString() { return ""; }
+    @Override
+    public boolean equals(Object other) {
+        return this == other || other instanceof Engineer engineer
+                && employeeId.equals(engineer.employeeId);
+    }
 
-    public boolean equals(Object other) { return false; }
+    @Override
+    public int hashCode() {
+        return employeeId.hashCode();
+    }
 
-    public int hashCode() { return 0; }
+    @Override
+    public String toString() {
+        return "Engineer{employeeId='" + employeeId + "', name='" + name
+                + "', specialty=" + specialty + ", experienceYears=" + experienceYears
+                + ", available=" + isAvailable + ", assignedChassisId='" + assignedChassisId + "'}";
+    }
 }
