@@ -17,6 +17,8 @@ public final class PartsCatalogVerification {
         }
         check(PartsCatalog.getUnitPrice("  tires  ") == prices.get("TIRES"),
                 "Price lookup must normalize case and surrounding whitespace.");
+        check("TIRES".equals(PartsCatalog.normalizePartType("  tires  ")),
+                "Inventory keys must use the same canonical part type as price lookup.");
         for (String invalid : new String[] { null, "", " \t\n", "\u2003", "UNKNOWN", "TIRE" }) {
             try {
                 PartsCatalog.getUnitPrice(invalid);

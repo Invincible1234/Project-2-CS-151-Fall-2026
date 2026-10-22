@@ -14,14 +14,18 @@ public final class PartsCatalog {
     }
 
     public static double getUnitPrice(String partType) {
+        return UNIT_PRICES.get(normalizePartType(partType));
+    }
+
+    public static String normalizePartType(String partType) {
         if (partType == null || partType.isBlank()) {
             throw new IllegalArgumentException("Part type is required.");
         }
-        Double price = UNIT_PRICES.get(partType.strip().toUpperCase(Locale.ROOT));
-        if (price == null) {
+        String normalized = partType.strip().toUpperCase(Locale.ROOT);
+        if (!UNIT_PRICES.containsKey(normalized)) {
             throw new IllegalArgumentException("Unknown part type. Choose a part from the catalog.");
         }
-        return price;
+        return normalized;
     }
 
     public static Map<String, Double> getPrices() {
