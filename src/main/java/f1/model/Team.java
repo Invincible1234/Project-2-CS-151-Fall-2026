@@ -2,12 +2,14 @@ package f1.model;
 
 import exception.CapacityExceededException;
 import exception.DuplicateEntityException;
+import exception.InsufficientResourcesException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import util.Constants;
+import util.PartsCatalog;
 
 public final class Team {
     private final String teamId;
@@ -76,6 +78,52 @@ public final class Team {
             throw new IllegalArgumentException("Budget addition is too small for the current balance.");
         }
         budget = updatedBudget;
+    }
+
+    public boolean addParts(String partType, int quantity) {
+        String part = PartsCatalog.normalizePartType(partType);
+        requirePositiveQuantity(quantity);
+        int currentQuantity = partsInventory.getOrDefault(part, 0);
+        if (quantity > Integer.MAX_VALUE - currentQuantity) {
+            throw new CapacityExceededException("Part quantity exceeds the supported inventory range.");
+        }
+        double cost = PartsCatalog.getUnitPrice(part) * quantity;
+        if (!Double.isFinite(cost) || cost <= 0) {
+            throw new IllegalArgumentException("Purchase cost must be finite and positive.");
+        }
+        if (cost > budget) {
+            throw new InsufficientResourcesException("Not enough budget to purchase the requested parts.");
+        }
+        double updatedBudget = budget - cost;
+        if (updatedBudget >= budget) {
+            throw new IllegalArgumentException("Purchase cost is too small for the current balance.");
+        }
+        partsInventory.put(part, currentQuantity + quantity);
+        budget = updatedBudget;
+        return true;
+    }
+
+    public boolean consumeParts(String partType, int quantity) {
+        String part = PartsCatalog.normalizePartType(partType);
+        requirePositiveQuantity(quantity);
+        int currentQuantity = partsInventory.getOrDefault(part, 0);
+        if (quantity > currentQuantity) {
+            throw new InsufficientResourcesException("Not enough parts in inventory.");
+        }
+        int remaining = currentQuantity - quantity;
+        if (remaining == 0) {
+            partsInventory.remove(part);
+        } else {
+            partsInventory.put(part, remaining);
+        }
+        return true;
+    }
+
+    public Map<String, Integer> getPartsInventory(UserRole role) {
+        if (role != UserRole.TEAM_PRINCIPAL && role != UserRole.ENGINEER) {
+            throw new SecurityException("Team principal or engineer access is required.");
+        }
+        return Map.copyOf(partsInventory);
     }
 
     public boolean addCar(F1Car car) {
@@ -168,6 +216,12 @@ public final class Team {
                 + ", engineers=" + engineers.size()
                 + ", championshipPoints=" + championshipPoints
                 + ", raceResults=" + raceResults.size() + ", strategies=" + strategies.size() + "}";
+    }
+
+    private static void requirePositiveQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Part quantity must be positive.");
+        }
     }
 
     private static void requireTeamPrincipal(UserRole role) {
