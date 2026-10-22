@@ -231,12 +231,17 @@ public final class Team {
         if (result == null || !result.isValidResult()) {
             throw new IllegalArgumentException("A valid race result is required.");
         }
+        if (result.hasPointsAccount()) {
+            throw new IllegalStateException("This result is already registered with a team.");
+        }
         String resultId = requireText(result.getResultId(), "Result ID");
         String chassisId = requireText(result.getChassisId(), "Result chassis ID");
         String driverId = requireText(result.getDriverId(), "Result driver ID");
         requireText(result.getCircuitId(), "Result circuit ID");
         for (RaceResult existing : raceResults) {
-            if (resultId.equals(existing.getResultId().strip())) {
+            if (resultId.equals(existing.getResultId().strip()) || result.hasSameRaceEntry(existing)
+                    || result.getRaceId().equals(existing.getRaceId())
+                    && chassisId.equals(existing.getChassisId())) {
                 throw new DuplicateEntityException("This race result has already been recorded.");
             }
         }
@@ -267,9 +272,24 @@ public final class Team {
                 || points > Integer.MAX_VALUE - resultDriver.getChampionshipPoints()) {
             throw new IllegalStateException("Championship point total exceeds the supported range.");
         }
-        resultDriver.addChampionshipPoints(points);
-        championshipPoints += points;
+        Driver registeredDriver = resultDriver;
+        result.bindPointsAccount(delta -> adjustResultPoints(result, registeredDriver, delta));
         raceResults.add(result);
+        result.applyPointsToDriverAndTeam();
+    }
+
+    private void adjustResultPoints(RaceResult result, Driver driver, int delta) {
+        if (raceResults.stream().noneMatch(existing -> existing == result)) {
+            throw new IllegalStateException("The result is not registered with this team.");
+        }
+        long teamTotal = (long) championshipPoints + delta;
+        long driverTotal = (long) driver.getChampionshipPoints() + delta;
+        if (teamTotal < 0 || driverTotal < 0
+                || teamTotal > Integer.MAX_VALUE || driverTotal > Integer.MAX_VALUE) {
+            throw new IllegalStateException("Corrected championship points exceed the supported range.");
+        }
+        driver.adjustChampionshipPoints(delta);
+        championshipPoints = (int) teamTotal;
     }
 
     public String generateTeamPerformanceReport() {
@@ -289,7 +309,8 @@ public final class Team {
         int podiums = 0;
         int bestFinish = Integer.MAX_VALUE;
         double finishTotal = 0;
-        for (RaceResult result : raceResults) {
+        List<RaceResult> validResults = raceResults.stream().filter(RaceResult::isValidResult).toList();
+        for (RaceResult result : validResults) {
             int position = result.getFinishingPosition();
             if (position == 1) {
                 wins++;
@@ -310,13 +331,13 @@ public final class Team {
                 .append("Total mileage (km): ").append(mileage).append('\n')
                 .append("Drivers: ").append(drivers.size()).append('\n')
                 .append("Engineers: ").append(engineers.size()).append('\n')
-                .append("Recorded results: ").append(raceResults.size()).append('\n')
+                .append("Recorded results: ").append(validResults.size()).append('\n')
                 .append("Championship points: ").append(championshipPoints).append('\n')
                 .append("Wins: ").append(wins).append('\n')
                 .append("Podiums: ").append(podiums).append('\n')
-                .append("Best finish: ").append(raceResults.isEmpty() ? "N/A" : bestFinish).append('\n')
-                .append("Average finish: ").append(raceResults.isEmpty() ? "N/A"
-                        : String.format(Locale.ROOT, "%.2f", finishTotal / raceResults.size()))
+                .append("Best finish: ").append(validResults.isEmpty() ? "N/A" : bestFinish).append('\n')
+                .append("Average finish: ").append(validResults.isEmpty() ? "N/A"
+                        : String.format(Locale.ROOT, "%.2f", finishTotal / validResults.size()))
                 .append("\nDriver standings:\n");
         if (drivers.isEmpty()) {
             report.append("No registered drivers.\n");

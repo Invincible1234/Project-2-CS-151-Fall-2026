@@ -47,11 +47,12 @@ public class Driver {
         return name;
     }
 
-    final void addChampionshipPoints(int points) {
-        if (points < 0 || points > Integer.MAX_VALUE - championshipPoints) {
+    final void adjustChampionshipPoints(int delta) {
+        long updated = (long) championshipPoints + delta;
+        if (updated < 0 || updated > Integer.MAX_VALUE) {
             throw new IllegalArgumentException("Championship points must fit the supported range.");
         }
-        championshipPoints += points;
+        championshipPoints = (int) updated;
     }
 
     public String getLicenseNumber() {
@@ -169,31 +170,14 @@ public class Driver {
         this.phone = Validation.requirePhone(newPhone);
     }
 
-    public void completeRace(int finishingPosition, Circuit circuit) {
-        if (circuit == null) {
-            throw new IllegalArgumentException("Circuit is required.");
+    public void completeRace(RaceResult result, Team team) {
+        if (result == null || team == null || !driverId.equals(result.getDriverId())) {
+            throw new IllegalArgumentException("A result for this driver and its registered team are required.");
         }
-        int position = Validation.requirePosition(finishingPosition);
-        if (banned) {
-            throw new IllegalArgumentException("A banned driver cannot complete a race.");
+        if (team.getDrivers().stream().noneMatch(driver -> driver == this)) {
+            throw new IllegalArgumentException("This driver must be registered with the result team.");
         }
-        championshipPoints += pointsFor(position);
-    }
-
-    private static int pointsFor(int position) {
-        return switch (position) {
-            case 1 -> 25;
-            case 2 -> 18;
-            case 3 -> 15;
-            case 4 -> 12;
-            case 5 -> 10;
-            case 6 -> 8;
-            case 7 -> 6;
-            case 8 -> 4;
-            case 9 -> 2;
-            case 10 -> 1;
-            default -> 0;
-        };
+        team.recordRaceResult(result);
     }
 
     @Override
