@@ -1,17 +1,27 @@
 package f1.model;
 
 import exception.RegulatoryViolationException;
+import java.util.Locale;
 
 public class HybridRaceCar extends F1Car {
     private static final double MAX_DEPLOYMENT_PER_LAP_MJ = 4.0;
     private static final double MAX_RECOVERY_PER_LAP_MJ = 9.0;
+    private static final double MAX_MGU_K_POWER_KW = 350.0;
     private final double batteryCapacityMJ;
     private double currentEnergyMJ;
     private double deployedThisLapMJ;
     private double recoveredThisLapMJ;
+    private double mguKPowerKw;
+    private HybridUpgrade hybridUpgrade;
 
     public HybridRaceCar(String chassisId, String teamName, String model, int year,
             double batteryCapacityMJ, double currentEnergyMJ) {
+        this(chassisId, teamName, model, year, batteryCapacityMJ, currentEnergyMJ,
+                HybridUpgrade.BALANCED.getPowerKw());
+    }
+
+    public HybridRaceCar(String chassisId, String teamName, String model, int year,
+            double batteryCapacityMJ, double currentEnergyMJ, double mguKPowerKw) {
         super(chassisId, teamName, model, year);
         if (!Double.isFinite(batteryCapacityMJ) || batteryCapacityMJ <= 0) {
             throw new IllegalArgumentException("Battery capacity must be finite and positive.");
@@ -22,6 +32,8 @@ public class HybridRaceCar extends F1Car {
         }
         this.batteryCapacityMJ = batteryCapacityMJ;
         this.currentEnergyMJ = currentEnergyMJ;
+        validatePower(mguKPowerKw);
+        this.mguKPowerKw = mguKPowerKw;
     }
 
     public double getBatteryCapacityMJ() {
@@ -77,5 +89,79 @@ public class HybridRaceCar extends F1Car {
 
     public boolean requiresSpecialistEngineer() {
         return true;
+    }
+
+    public double getMguKPowerKw() {
+        return mguKPowerKw;
+    }
+
+    public String getHybridUpgrade() {
+        return hybridUpgrade == null ? "" : hybridUpgrade.name();
+    }
+
+    public String getAssignedEngineerId() {
+        Engineer engineer = getAssignedEngineer();
+        return engineer == null ? "" : engineer.getEmployeeId();
+    }
+
+    public boolean lockForSpecialist(Engineer engineer) {
+        if (engineer == null) {
+            throw new IllegalArgumentException("A hybrid power-unit engineer is required.");
+        }
+        requireHybridChangesAllowed();
+        if (getAssignedEngineer() != null) {
+            throw new IllegalStateException("This car already has an assigned engineer.");
+        }
+        return engineer.assignToCar(this);
+    }
+
+    public void releaseSpecialist() {
+        if (isSessionActive() || hasScheduledStrategy()) {
+            throw new IllegalStateException("Complete or cancel the commitment before releasing the specialist.");
+        }
+        Engineer engineer = getAssignedEngineer();
+        if (engineer == null) {
+            throw new IllegalStateException("No specialist is assigned to this car.");
+        }
+        engineer.releaseFromCar();
+    }
+
+    public boolean applyHybridUpgrade(String upgradeType) {
+        if (upgradeType == null || upgradeType.isBlank()) {
+            throw new IllegalArgumentException("A hybrid upgrade is required.");
+        }
+        HybridUpgrade upgrade;
+        try {
+            upgrade = HybridUpgrade.valueOf(upgradeType.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException("Choose EFFICIENCY, BALANCED, or PERFORMANCE.");
+        }
+        requireHybridChangesAllowed();
+        Engineer engineer = getAssignedEngineer();
+        if (engineer == null || engineer.isAvailable()
+                || !getChassisId().equals(engineer.getAssignedChassisId())) {
+            throw new IllegalStateException("An assigned hybrid specialist must approve the upgrade.");
+        }
+        validatePower(upgrade.getPowerKw());
+        mguKPowerKw = upgrade.getPowerKw();
+        hybridUpgrade = upgrade;
+        invalidatePreparation();
+        return true;
+    }
+
+    private void requireHybridChangesAllowed() {
+        if (isSessionActive() || hasScheduledStrategy() || isPermanentlyDecommissioned()
+                || isDueForMaintenance() || !getOutOfServiceReason().isEmpty()) {
+            throw new IllegalStateException("Hybrid changes require an idle, serviceable, uncommitted car.");
+        }
+    }
+
+    private static void validatePower(double powerKw) {
+        if (!Double.isFinite(powerKw) || powerKw <= 0) {
+            throw new IllegalArgumentException("MGU-K power must be finite and positive.");
+        }
+        if (powerKw > MAX_MGU_K_POWER_KW) {
+            throw new RegulatoryViolationException("MGU-K power cannot exceed 350 kW.");
+        }
     }
 }
