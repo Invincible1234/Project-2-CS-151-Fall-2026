@@ -1,6 +1,7 @@
 package f1.model;
 
 import exception.InvalidStrategyException;
+import exception.RegulatoryViolationException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -23,6 +24,7 @@ public final class RaceStrategy {
     private boolean lapTimeEstimateFinalized;
     private TireCompound tireCompound;
     private String energyDeploymentPlan;
+    private HybridEnergyPlan hybridEnergyPlan;
     private final List<String> partsUsed;
     private WeatherCondition expectedWeather;
     private String cancellationReason;
@@ -99,6 +101,31 @@ public final class RaceStrategy {
         return energyDeploymentPlan;
     }
 
+    public boolean hasEnergyPlan() {
+        return hybridEnergyPlan != null;
+    }
+
+    public double getPlannedDeploymentMj() {
+        return hybridEnergyPlan == null ? 0 : hybridEnergyPlan.getDeploymentMj();
+    }
+
+    public double getPlannedRecoveryMj() {
+        return hybridEnergyPlan == null ? 0 : hybridEnergyPlan.getRecoveryMj();
+    }
+
+    public boolean addEnergyPlan(String plan) {
+        requireEditableDraft();
+        if (!(car instanceof HybridRaceCar hybrid)) {
+            throw new InvalidStrategyException("Energy deployment plans require a hybrid car.");
+        }
+        HybridEnergyPlan candidate = HybridEnergyPlan.parse(plan);
+        validateEnergyPlan(candidate, hybrid);
+        hybridEnergyPlan = candidate;
+        energyDeploymentPlan = candidate.toString();
+        invalidateLapTimeEstimate();
+        return true;
+    }
+
     public List<String> getPartsUsed() {
         return List.copyOf(partsUsed);
     }
@@ -159,7 +186,13 @@ public final class RaceStrategy {
         if (!Double.isFinite(baseline) || baseline <= 0) {
             throw new InvalidStrategyException("Circuit baseline must be finite and positive.");
         }
-        double carDelta = car.calculateLapTimeDelta(circuit, expectedWeather);
+        double carDelta;
+        if (car instanceof HybridRaceCar hybrid && hybridEnergyPlan != null) {
+            validateEnergyPlan(hybridEnergyPlan, hybrid);
+            carDelta = hybrid.calculateLapTimeDelta(circuit, expectedWeather, hybridEnergyPlan.getDeploymentMj());
+        } else {
+            carDelta = car.calculateLapTimeDelta(circuit, expectedWeather);
+        }
         double tireFraction = switch (tireCompound) {
             case SOFT -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.03 : -0.015;
             case MEDIUM -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.01 : 0;
@@ -180,6 +213,27 @@ public final class RaceStrategy {
 
     public String getCancellationReason() {
         return cancellationReason;
+    }
+
+    private static void validateEnergyPlan(HybridEnergyPlan plan, HybridRaceCar hybrid) {
+        if (!Double.isFinite(hybrid.getMguKPowerKw()) || hybrid.getMguKPowerKw() <= 0
+                || hybrid.getMguKPowerKw() > 350.0) {
+            throw new RegulatoryViolationException("Hybrid power must be positive and at most 350 kW.");
+        }
+        boolean currentLap = hybrid.isSessionActive() && !hybrid.isLapCompleted();
+        double deployed = currentLap ? hybrid.getDeployedThisLapMJ() : 0;
+        double recovered = currentLap ? hybrid.getRecoveredThisLapMJ() : 0;
+        if (plan.getDeploymentMj() > 4.0 - deployed || plan.getRecoveryMj() > 9.0 - recovered) {
+            throw new RegulatoryViolationException("Energy plan exceeds the remaining lap allowances.");
+        }
+        double charge = hybrid.getCurrentEnergyMJ();
+        if (plan.getDeploymentMj() > charge) {
+            throw new InvalidStrategyException("Planned deployment exceeds current battery charge.");
+        }
+        double finalCharge = charge - plan.getDeploymentMj() + plan.getRecoveryMj();
+        if (!Double.isFinite(finalCharge) || finalCharge < 0 || finalCharge > hybrid.getBatteryCapacityMJ()) {
+            throw new InvalidStrategyException("Energy plan would exceed the battery capacity.");
+        }
     }
 
     private void requireEditableDraft() {
