@@ -8,7 +8,8 @@ import java.util.Objects;
 public abstract class F1Car implements Raceable {
     private static final double MAINTENANCE_INTERVAL_KM = 500.0;
     private final String chassisId;
-    private final String teamName;
+    private String teamName;
+    private Team registeredTeam;
     private final String model;
     private final int year;
     private double totalMileage;
@@ -56,6 +57,27 @@ public abstract class F1Car implements Raceable {
 
     public String getTeamName() {
         return teamName;
+    }
+
+    public Team getRegisteredTeam() {
+        return registeredTeam;
+    }
+
+    final void changeRegisteredTeam(Team expected, Team replacement) {
+        if (registeredTeam != expected || sessionActive) {
+            throw new IllegalStateException("Car registration does not match the source team.");
+        }
+        registeredTeam = replacement;
+        if (replacement != null) {
+            teamName = replacement.getName();
+        }
+    }
+
+    protected final void changeUnregisteredTeamName(String newTeam) {
+        if (registeredTeam != null) {
+            throw new IllegalStateException("Transfer a registered car using the destination Team object.");
+        }
+        teamName = newTeam;
     }
 
     public String getModel() {
@@ -206,6 +228,25 @@ public abstract class F1Car implements Raceable {
     protected final void invalidatePreparation() {
         raceReady = false;
         preparedSessionType = null;
+    }
+
+    protected final void retirePermanently() {
+        if (sessionActive || hasScheduledStrategy() || permanentlyDecommissioned) {
+            throw new IllegalStateException("End commitments before permanently retiring the car.");
+        }
+        if (assignedDriver != null && !assignedDriver.getAssignedChassisIds().contains(chassisId)
+                || assignedEngineer != null && !chassisId.equals(assignedEngineer.getAssignedChassisId())) {
+            throw new IllegalStateException("Repair inconsistent assignments before retiring the car.");
+        }
+        if (assignedDriver != null) {
+            assignedDriver.unassignFromCar(this);
+        }
+        if (assignedEngineer != null) {
+            assignedEngineer.releaseFromCar();
+        }
+        permanentlyDecommissioned = true;
+        outOfServiceReason = "Permanently decommissioned";
+        invalidatePreparation();
     }
 
     @Override

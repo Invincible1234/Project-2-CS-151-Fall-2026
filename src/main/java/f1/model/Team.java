@@ -79,7 +79,9 @@ public final class Team {
     }
 
     public boolean addCar(F1Car car) {
-        return register(cars, car, F1Car::getChassisId, capacity, "Car");
+        validateRegistration(cars, car, F1Car::getChassisId, capacity, "Car");
+        car.changeRegisteredTeam(null, this);
+        return cars.add(car);
     }
 
     public boolean addDriver(Driver driver) {
@@ -107,10 +109,29 @@ public final class Team {
         if (registered == null) {
             return false;
         }
-        if (registered.hasScheduledStrategy() || registered.hasActiveAssignments()) {
-            throw new IllegalStateException("Cannot remove a car with assignments or a scheduled strategy.");
+        if (registered.isSessionActive() || registered.hasScheduledStrategy() || registered.hasActiveAssignments()
+                || registered instanceof ClassicRaceCar classic && classic.isRestorationInProgress()) {
+            throw new IllegalStateException("Cannot remove a car with active work, assignments, or a strategy.");
         }
+        registered.changeRegisteredTeam(this, null);
         return cars.removeIf(existing -> existing == registered);
+    }
+
+    void transferClassicCar(ClassicRaceCar car, Team destination) {
+        if (destination == null || equals(destination)) {
+            throw new IllegalArgumentException("Choose a different destination team.");
+        }
+        if (car == null || findRegistered(cars, car, F1Car::getChassisId, "Car") != car) {
+            throw new IllegalArgumentException("The source team must own this exact car.");
+        }
+        if (car.isSessionActive() || car.hasScheduledStrategy() || car.hasActiveAssignments()
+                || car.isRestorationInProgress() || car.isPermanentlyDecommissioned()) {
+            throw new IllegalStateException("Resolve car commitments before transferring ownership.");
+        }
+        validateRegistration(destination.cars, car, F1Car::getChassisId, destination.capacity, "Car");
+        car.changeRegisteredTeam(this, destination);
+        cars.removeIf(existing -> existing == car);
+        destination.cars.add(car);
     }
 
     public boolean removeDriver(Driver driver) {
@@ -192,6 +213,12 @@ public final class Team {
 
     private static <T> boolean register(List<T> members, T member,
             Function<T, String> identity, int limit, String type) {
+        validateRegistration(members, member, identity, limit, type);
+        return members.add(member);
+    }
+
+    private static <T> void validateRegistration(List<T> members, T member,
+            Function<T, String> identity, int limit, String type) {
         if (member == null) {
             throw new IllegalArgumentException(type + " is required.");
         }
@@ -204,7 +231,6 @@ public final class Team {
         if (members.size() >= limit) {
             throw new CapacityExceededException(type + " capacity of " + limit + " has been reached.");
         }
-        return members.add(member);
     }
 
     private static String requireText(String value, String fieldName) {
