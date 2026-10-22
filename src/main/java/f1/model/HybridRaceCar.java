@@ -26,6 +26,17 @@ public class HybridRaceCar extends F1Car {
         return currentEnergyMJ;
     }
 
+    public boolean deployEnergyBoost(double energyMJ) {
+        if (!Double.isFinite(energyMJ) || energyMJ <= 0) {
+            throw new IllegalArgumentException("Deployment energy must be finite and positive.");
+        }
+        if (energyMJ > currentEnergyMJ) {
+            throw new IllegalArgumentException("Not enough battery energy for this boost.");
+        }
+        currentEnergyMJ -= energyMJ;
+        return true;
+    }
+
     public boolean requiresSpecialistEngineer() {
         return true;
     }
