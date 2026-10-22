@@ -78,6 +78,10 @@ public abstract class F1Car implements Raceable {
         return lastSetupDate;
     }
 
+    protected final LocalDate currentDate() {
+        return LocalDate.now(clock);
+    }
+
     public String getPowerUnitType() {
         return powerUnitType;
     }
