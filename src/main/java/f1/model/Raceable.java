@@ -13,16 +13,16 @@ public interface Raceable {
 
     /**
      * Gets this object ready for one session.
-     * sessionType is "practice", "qualifying", or "race".
+     * sessionType identifies practice, qualifying, or race preparation.
      * Returns true when setup worked and the object can run.
      * Returns false when it is not ready, such as when maintenance is due.
      */
-    boolean prepareForSession(String sessionType);
+    boolean prepareForSession(SessionType sessionType);
 
     /**
      * Ends the session that is in progress.
-     * The class that implements this should update its own state,
-     * for example mileage or whether it is still race ready.
+     * Clears active session state. Distance and points are accounted for
+     * by the race workflow so completion cannot count them twice.
      */
     void completeSession();
 

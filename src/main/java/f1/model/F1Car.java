@@ -1,21 +1,40 @@
 package f1.model;
 
-public abstract class F1Car {
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.Locale;
+import java.util.Objects;
+
+public abstract class F1Car implements Raceable {
+    private static final double MAINTENANCE_INTERVAL_KM = 500.0;
     private final String chassisId;
-    private final String teamName;
+    private String teamName;
+    private Team registeredTeam;
     private final String model;
     private final int year;
     private double totalMileage;
+    private double mileageSinceService;
+    private final Clock clock;
+    private String outOfServiceReason = "";
+    private String lastServiceDate = "";
+    private String lastServiceNotes = "";
     private boolean raceReady;
+    private boolean sessionActive;
+    private SessionType preparedSessionType;
     private String lastSetupDate;
     private String powerUnitType;
-    private String currentAeroConfig;
+    private AeroConfiguration currentAeroConfig;
     private boolean permanentlyDecommissioned;
     private String scheduledStrategy;
     private Driver assignedDriver;
     private Engineer assignedEngineer;
 
     protected F1Car(String chassisId, String teamName, String model, int year) {
+        this(chassisId, teamName, model, year, Clock.systemDefaultZone());
+    }
+
+    protected F1Car(String chassisId, String teamName, String model, int year, Clock clock) {
+        this.clock = Objects.requireNonNull(clock, "Clock is required.");
         if (chassisId == null || teamName == null || model == null) {
             throw new IllegalArgumentException("Chassis ID, team, and model are required.");
         }
@@ -28,7 +47,6 @@ public abstract class F1Car {
         this.year = year;
         this.lastSetupDate = "";
         this.powerUnitType = "";
-        this.currentAeroConfig = "";
         this.permanentlyDecommissioned = false;
         this.scheduledStrategy = "";
     }
@@ -39,6 +57,27 @@ public abstract class F1Car {
 
     public String getTeamName() {
         return teamName;
+    }
+
+    public Team getRegisteredTeam() {
+        return registeredTeam;
+    }
+
+    final void changeRegisteredTeam(Team expected, Team replacement) {
+        if (registeredTeam != expected || sessionActive) {
+            throw new IllegalStateException("Car registration does not match the source team.");
+        }
+        registeredTeam = replacement;
+        if (replacement != null) {
+            teamName = replacement.getName();
+        }
+    }
+
+    protected final void changeUnregisteredTeamName(String newTeam) {
+        if (registeredTeam != null) {
+            throw new IllegalStateException("Transfer a registered car using the destination Team object.");
+        }
+        teamName = newTeam;
     }
 
     public String getModel() {
@@ -61,12 +100,16 @@ public abstract class F1Car {
         return lastSetupDate;
     }
 
+    protected final LocalDate currentDate() {
+        return LocalDate.now(clock);
+    }
+
     public String getPowerUnitType() {
         return powerUnitType;
     }
 
     public String getCurrentAeroConfig() {
-        return currentAeroConfig;
+        return currentAeroConfig == null ? "" : currentAeroConfig.name();
     }
 
     public boolean isPermanentlyDecommissioned() {
@@ -74,41 +117,172 @@ public abstract class F1Car {
     }
 
     public void updateMileage(double kilometers) {
-        if (kilometers < 0) {
-            throw new IllegalArgumentException("Mileage cannot be negative.");
+        if (!Double.isFinite(kilometers) || kilometers < 0) {
+            throw new IllegalArgumentException("Mileage must be finite and nonnegative.");
         }
-        this.totalMileage += kilometers;
-        if (this.totalMileage > 500.0) {
+        if (permanentlyDecommissioned) {
+            throw new IllegalStateException("Cannot add mileage to a decommissioned car.");
+        }
+        double updatedTotal = totalMileage + kilometers;
+        double updatedSinceService = mileageSinceService + kilometers;
+        if (!Double.isFinite(updatedTotal) || !Double.isFinite(updatedSinceService)) {
+            throw new IllegalArgumentException("Mileage would exceed the supported range.");
+        }
+        totalMileage = updatedTotal;
+        mileageSinceService = updatedSinceService;
+        if (isDueForMaintenance()) {
             this.raceReady = false;
         }
     }
 
+    public double getMileageSinceService() {
+        return mileageSinceService;
+    }
+
+    public boolean isDueForMaintenance() {
+        return mileageSinceService >= MAINTENANCE_INTERVAL_KM;
+    }
+
+    public String getOutOfServiceReason() {
+        return outOfServiceReason;
+    }
+
+    public String getLastServiceDate() {
+        return lastServiceDate;
+    }
+
+    public String getLastServiceNotes() {
+        return lastServiceNotes;
+    }
+
+    public void markOutOfService(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("An out-of-service reason is required.");
+        }
+        if (sessionActive || permanentlyDecommissioned) {
+            throw new IllegalStateException("Cannot change service status during a session or after retirement.");
+        }
+        outOfServiceReason = reason.trim();
+        raceReady = false;
+        preparedSessionType = null;
+    }
+
+    public void performService(String notes) {
+        if (notes == null || notes.isBlank()) {
+            throw new IllegalArgumentException("Service notes are required.");
+        }
+        if (sessionActive || permanentlyDecommissioned) {
+            throw new IllegalStateException("Cannot service an active or decommissioned car.");
+        }
+        String serviceDate = LocalDate.now(clock).toString();
+        lastServiceDate = serviceDate;
+        lastServiceNotes = notes.trim();
+        mileageSinceService = 0;
+        outOfServiceReason = "";
+        raceReady = false;
+        preparedSessionType = null;
+    }
+
+    @Override
     public boolean prepareForSession(SessionType sessionType) {
         if (sessionType == null) {
             throw new IllegalArgumentException("Session type is required.");
         }
-        if (permanentlyDecommissioned) {
+        if (permanentlyDecommissioned || sessionActive || raceReady
+                || !outOfServiceReason.isEmpty() || isDueForMaintenance()) {
             return false;
         }
-        if (!raceReady) {
-            return false;
-        }
-        if (totalMileage > 500.0) {
-            return false;
-        }
+        String setupDate = LocalDate.now(clock).toString();
+        this.preparedSessionType = sessionType;
         this.raceReady = true;
-        this.lastSetupDate = "today";
+        this.lastSetupDate = setupDate;
         return true;
+    }
+
+    public void startSession() {
+        if (!isAvailableForRace()) {
+            throw new IllegalStateException("Prepare an available car before starting a session.");
+        }
+        sessionActive = true;
+        raceReady = false;
+    }
+
+    @Override
+    public void completeSession() {
+        if (!sessionActive) {
+            throw new IllegalStateException("There is no active session to complete.");
+        }
+        sessionActive = false;
+        preparedSessionType = null;
+        raceReady = false;
+    }
+
+    public boolean isSessionActive() {
+        return sessionActive;
+    }
+
+    public SessionType getPreparedSessionType() {
+        return preparedSessionType;
+    }
+
+    protected final void invalidatePreparation() {
+        raceReady = false;
+        preparedSessionType = null;
+    }
+
+    protected final void retirePermanently() {
+        if (sessionActive || hasScheduledStrategy() || permanentlyDecommissioned) {
+            throw new IllegalStateException("End commitments before permanently retiring the car.");
+        }
+        if (assignedDriver != null && !assignedDriver.getAssignedChassisIds().contains(chassisId)
+                || assignedEngineer != null && !chassisId.equals(assignedEngineer.getAssignedChassisId())) {
+            throw new IllegalStateException("Repair inconsistent assignments before retiring the car.");
+        }
+        if (assignedDriver != null) {
+            assignedDriver.unassignFromCar(this);
+        }
+        if (assignedEngineer != null) {
+            assignedEngineer.releaseFromCar();
+        }
+        permanentlyDecommissioned = true;
+        outOfServiceReason = "Permanently decommissioned";
+        invalidatePreparation();
+    }
+
+    @Override
+    public boolean isAvailableForRace() {
+        return raceReady && !sessionActive && !permanentlyDecommissioned
+                && outOfServiceReason.isEmpty() && !isDueForMaintenance();
+    }
+
+    @Override
+    public String getNextMaintenanceDue() {
+        if (isDueForMaintenance()) {
+            return "Maintenance required before the next session.";
+        }
+        return "Maintenance interval: " + Math.max(0, MAINTENANCE_INTERVAL_KM - mileageSinceService)
+                + " km remaining.";
     }
 
     public void applyAeroUpgrade(String upgrade) {
         if (upgrade == null || upgrade.isBlank()) {
             throw new IllegalArgumentException("Upgrade is required.");
         }
-        if (permanentlyDecommissioned) {
-            throw new IllegalArgumentException("Cannot upgrade a decommissioned car.");
+        AeroConfiguration configuration;
+        try {
+            configuration = AeroConfiguration.valueOf(upgrade.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException(
+                    "Choose BALANCED, LOW_DRAG, or HIGH_DOWNFORCE.");
         }
-        this.currentAeroConfig = upgrade.trim();
+        if (sessionActive || permanentlyDecommissioned || isDueForMaintenance()
+                || !outOfServiceReason.isEmpty()) {
+            throw new IllegalStateException(
+                    "Upgrades require an idle, serviceable car that has not been decommissioned.");
+        }
+        currentAeroConfig = configuration;
+        raceReady = false;
+        preparedSessionType = null;
     }
 
     public String getScheduledStrategy() {
@@ -137,16 +311,18 @@ public abstract class F1Car {
             throw new IllegalStateException("Car requires a driver and must not already have one.");
         }
         assignedDriver = driver;
+        invalidatePreparation();
     }
 
     void releaseDriver(Driver driver) {
-        if (hasScheduledStrategy()) {
-            throw new IllegalStateException("Cannot release a driver while a strategy is scheduled.");
+        if (sessionActive || hasScheduledStrategy()) {
+            throw new IllegalStateException("Cannot release a driver during a session or scheduled strategy.");
         }
         if (assignedDriver != driver) {
             throw new IllegalStateException("Driver is not assigned to this car.");
         }
         assignedDriver = null;
+        invalidatePreparation();
     }
 
     void assignEngineer(Engineer engineer) {
@@ -155,21 +331,24 @@ public abstract class F1Car {
             throw new IllegalStateException("Car requires an engineer and must not already have one.");
         }
         assignedEngineer = engineer;
+        invalidatePreparation();
     }
 
     void releaseEngineer(Engineer engineer) {
-        if (hasScheduledStrategy()) {
-            throw new IllegalStateException("Cannot release an engineer while a strategy is scheduled.");
+        if (sessionActive || hasScheduledStrategy()) {
+            throw new IllegalStateException("Cannot release an engineer during a session or scheduled strategy.");
         }
         if (assignedEngineer != engineer) {
             throw new IllegalStateException("Engineer is not assigned to this car.");
         }
         assignedEngineer = null;
+        invalidatePreparation();
     }
 
     private void requireAssignable() {
-        if (permanentlyDecommissioned || hasScheduledStrategy()) {
-            throw new IllegalStateException("Car is decommissioned or has a scheduled strategy.");
+        if (permanentlyDecommissioned || sessionActive || hasScheduledStrategy()
+                || isDueForMaintenance() || !outOfServiceReason.isEmpty()) {
+            throw new IllegalStateException("Assignments require an idle, serviceable, uncommitted car.");
         }
     }
 
@@ -183,8 +362,4 @@ public abstract class F1Car {
         this.scheduledStrategy = strategy.trim();
     }
 
-    public void markOutOfService() {
-        this.permanentlyDecommissioned = true;
-        this.raceReady = false;
-    }
 }

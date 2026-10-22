@@ -67,10 +67,10 @@ public final class TeamAssignmentVerification {
                 () -> team.assignDriver(driver, hybrid("UNREGISTERED")));
         check(car.getAssignedDriver() == null && driver.getAssignedChassisIds().isEmpty(),
                 "Rejected eligibility and membership checks must not assign anything.");
-        F1Car decommissioned = hybrid("DECOMMISSIONED");
-        decommissioned.markOutOfService();
-        team.addCar(decommissioned);
-        expectFailure(IllegalStateException.class, () -> team.assignDriver(driver, decommissioned));
+        F1Car unavailable = hybrid("OUT-OF-SERVICE");
+        unavailable.markOutOfService("Repairs required");
+        team.addCar(unavailable);
+        expectFailure(IllegalStateException.class, () -> team.assignDriver(driver, unavailable));
         car.scheduleStrategy("Reserved");
         expectFailure(IllegalStateException.class, () -> team.assignDriver(driver, car));
         check(driver.getAssignedChassisIds().isEmpty(), "Unavailable cars must not change the driver.");

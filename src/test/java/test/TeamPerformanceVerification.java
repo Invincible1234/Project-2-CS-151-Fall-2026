@@ -1,5 +1,6 @@
 package test;
 
+import f1.model.ClassicRaceCar;
 import f1.model.Driver;
 import f1.model.Engineer;
 import f1.model.F1Car;
@@ -37,10 +38,10 @@ public final class TeamPerformanceVerification {
     private static void verifyPopulatedReport() {
         Team team = new Team("POPULATED", "Apex", 2, 100000);
         F1Car first = new HybridRaceCar("CAR-1", "Apex", "Hybrid", 2026, 4, 2);
-        F1Car second = new HybridRaceCar("CAR-2", "Apex", "Hybrid", 2026, 4, 2);
+        ClassicRaceCar second = new ClassicRaceCar("CAR-2", "Apex", "Classic", 1980, 90, 2020, 300);
         first.updateMileage(12.5);
         second.updateMileage(7.75);
-        second.markOutOfService();
+        second.decommission();
         team.addCar(first);
         team.addCar(second);
         Driver zed = new Driver("ZED", "Driver Z", "LICENSE-Z", 25, "5551234567");
