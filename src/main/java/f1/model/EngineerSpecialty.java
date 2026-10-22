@@ -1,10 +1,8 @@
 package f1.model;
 
 public enum EngineerSpecialty {
+    HYBRID_POWER_UNIT,
     AERODYNAMICS,
-    POWER_UNIT,
-    SUSPENSION,
-    STRATEGY,
-    TIRE,
-    ELECTRONICS
+    RACE_ENGINEERING,
+    CLASSIC_RESTORATION
 }
