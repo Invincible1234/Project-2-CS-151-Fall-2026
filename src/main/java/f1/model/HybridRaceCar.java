@@ -144,6 +144,11 @@ public class HybridRaceCar extends F1Car {
         lapCompleted = false;
     }
 
+    final void endCancelledStrategyLap() {
+        currentLapNumber = 0;
+        lapCompleted = false;
+    }
+
     public void resetEnergyState() {
         if (isSessionActive() || hasScheduledStrategy() || isPermanentlyDecommissioned()) {
             throw new IllegalStateException("Energy state can only be reset on an idle, uncommitted car.");

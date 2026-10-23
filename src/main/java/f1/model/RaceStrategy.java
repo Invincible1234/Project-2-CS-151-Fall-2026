@@ -204,6 +204,29 @@ public final class RaceStrategy {
         return true;
     }
 
+    public void cancelStrategy(String reason) {
+        if (status != StrategyStatus.DRAFT && status != StrategyStatus.READY && status != StrategyStatus.ACTIVE) {
+            throw new InvalidStrategyException("Only a draft, ready, or active strategy can be cancelled.");
+        }
+        String validatedReason = Validation.requireText(reason, "Cancellation reason");
+        if (status == StrategyStatus.ACTIVE) {
+            Driver driver = car.getAssignedDriver();
+            if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam
+                    || car.getActiveStrategy() != this || !car.isSessionActive()
+                    || driver == null || !driver.getAssignedChassisIds().contains(chassisId)
+                    || car.getAssignedEngineer() != engineer
+                    || !chassisId.equals(engineer.getAssignedChassisId())) {
+                throw new InvalidStrategyException("Repair strategy ownership and assignments before cancellation.");
+            }
+            car.cancelStrategySession(this);
+            registeredTeam.releaseStrategyResources(this);
+            engineer.releaseFromCar();
+            driver.unassignFromCar(car);
+        }
+        cancellationReason = validatedReason;
+        status = StrategyStatus.CANCELLED;
+    }
+
     public WeatherCondition getExpectedWeather() {
         return expectedWeather;
     }

@@ -372,6 +372,19 @@ public abstract class F1Car implements Raceable {
         activeStrategy = strategy;
     }
 
+    final void cancelStrategySession(RaceStrategy strategy) {
+        if (activeStrategy != strategy || !sessionActive || strategy.getCar() != this) {
+            throw new IllegalStateException("This strategy does not own an active car session.");
+        }
+        sessionActive = false;
+        activeStrategy = null;
+        scheduledStrategy = "";
+        invalidatePreparation();
+        if (this instanceof HybridRaceCar hybrid) {
+            hybrid.endCancelledStrategyLap();
+        }
+    }
+
     final void validateStrategyCompletion(RaceStrategy strategy, double distanceKm) {
         if (activeStrategy != strategy || !sessionActive || strategy.getCar() != this) {
             throw new IllegalStateException("This strategy does not own an active car session.");
