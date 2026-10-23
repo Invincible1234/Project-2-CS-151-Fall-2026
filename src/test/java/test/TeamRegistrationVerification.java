@@ -11,6 +11,7 @@ import f1.model.HybridRaceCar;
 import f1.model.Team;
 import java.util.List;
 import util.Constants;
+import util.InstanceLimit;
 
 public final class TeamRegistrationVerification {
     private static int checks;
@@ -18,6 +19,7 @@ public final class TeamRegistrationVerification {
     public static void main(String[] args) {
         verifyCarRegistration();
         verifyPersonnelRegistration();
+        InstanceLimit.resetForTesting();
         verifyLimits();
         verifyInvalidInputs();
         System.out.println("PASS: Team registration (" + checks + " checks)");
@@ -82,13 +84,14 @@ public final class TeamRegistrationVerification {
         expectFailure(CapacityExceededException.class, () -> team.addCar(hybrid("OVERFLOW")));
         expectFailure(CapacityExceededException.class, () -> team.addDriver(driver("OVERFLOW")));
         expectFailure(CapacityExceededException.class, () -> team.addEngineer(engineer("OVERFLOW")));
-        expectFailure(DuplicateEntityException.class, () -> team.addDriver(driver("LICENSE-0")));
-        expectFailure(DuplicateEntityException.class, () -> team.addEngineer(engineer("EMPLOYEE-0")));
+        expectFailure(DuplicateEntityException.class, () -> team.addDriver(team.getDrivers().get(0)));
+        expectFailure(DuplicateEntityException.class, () -> team.addEngineer(team.getEngineers().get(0)));
         check(team.getCars().size() == Constants.MAXIMUM_INSTANCES
                 && team.getDrivers().size() == Constants.MAXIMUM_INSTANCES
                 && team.getEngineers().size() == Constants.MAXIMUM_INSTANCES,
                 "Limit and duplicate failures must preserve all collection sizes.");
 
+        InstanceLimit.resetForTesting();
         Team smallTeam = new Team("SMALL", "Apex", 1, 0);
         check(smallTeam.addDriver(driver("A")) && smallTeam.addDriver(driver("B")),
                 "Car capacity must not act as the personnel limit.");
