@@ -1,6 +1,8 @@
 package f1.ui;
 
 import f1.model.Driver;
+import f1.model.Engineer;
+import f1.model.EngineerSpecialty;
 import f1.model.F1Car;
 import f1.model.UserRole;
 import f1.service.PersonnelRegistry;
@@ -182,27 +184,112 @@ public final class PersonnelMenu {
     }
 
     private void registerEngineer() {
-        System.out.println("(not wired yet)");
+        try {
+            String employeeId = input.readText("Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            String name = input.readText("Name: ");
+            if ("EXIT".equals(name)) return;
+            EngineerSpecialty specialty = input.readEnum("Specialty (HYBRID_POWER_UNIT, AERODYNAMICS, RACE_ENGINEERING, CLASSIC_RESTORATION): ", EngineerSpecialty.class);
+            int experienceYears = input.readInt("Experience years: ");
+            String phone = input.readText("Phone: ");
+            if ("EXIT".equals(phone)) return;
+            Engineer engineer = registry.registerEngineer(employeeId, name, specialty, experienceYears, phone);
+            System.out.println("Registered: " + engineer);
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void assignDriverToCar() {
-        System.out.println("(not wired yet)");
+        try {
+            ensureCarsAvailable();
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            Driver driver = registry.findDriverById(driverId);
+            if (driver == null) {
+                System.out.println("Driver not found.");
+                return;
+            }
+            String chassisId = input.readText("Chassis ID: ");
+            if ("EXIT".equals(chassisId)) return;
+            F1Car car = findCarByChassisId(chassisId);
+            if (car == null) {
+                System.out.println("Car not found.");
+                return;
+            }
+            driver.assignToCar(car);
+            System.out.println("Driver assigned to " + chassisId);
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void assignEngineerToCar() {
-        System.out.println("(not wired yet)");
+        try {
+            ensureCarsAvailable();
+            String employeeId = input.readText("Engineer Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
+            if (engineer == null) {
+                System.out.println("Engineer not found.");
+                return;
+            }
+            String chassisId = input.readText("Chassis ID: ");
+            if ("EXIT".equals(chassisId)) return;
+            F1Car car = findCarByChassisId(chassisId);
+            if (car == null) {
+                System.out.println("Car not found.");
+                return;
+            }
+            engineer.assignToCar(car);
+            System.out.println("Engineer assigned to " + chassisId);
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void releaseEngineer() {
-        System.out.println("(not wired yet)");
+        try {
+            String employeeId = input.readText("Engineer Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
+            if (engineer == null) {
+                System.out.println("Engineer not found.");
+                return;
+            }
+            engineer.releaseFromCar();
+            System.out.println("Engineer released from car.");
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void removeDriver() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            registry.removeDriver(driverId);
+            System.out.println("Driver removed.");
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void removeEngineer() {
-        System.out.println("(not wired yet)");
+        try {
+            String employeeId = input.readText("Engineer Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            registry.removeEngineer(employeeId);
+            System.out.println("Engineer removed.");
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void requestCarSetup() {
@@ -244,15 +331,60 @@ public final class PersonnelMenu {
     }
 
     private void updateEngineerContact() {
-        System.out.println("(not wired yet)");
+        try {
+            String employeeId = input.readText("Engineer Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
+            if (engineer == null) {
+                System.out.println("Engineer not found.");
+                return;
+            }
+            String newPhone = input.readText("New phone: ");
+            if ("EXIT".equals(newPhone)) return;
+            engineer.updateContact(newPhone);
+            System.out.println("Contact updated for " + engineer.getName());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void updateEngineerSpecialty() {
-        System.out.println("(not wired yet)");
+        try {
+            String employeeId = input.readText("Engineer Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
+            if (engineer == null) {
+                System.out.println("Engineer not found.");
+                return;
+            }
+            EngineerSpecialty newSpecialty = input.readEnum("New specialty (HYBRID_POWER_UNIT, AERODYNAMICS, RACE_ENGINEERING, CLASSIC_RESTORATION): ", EngineerSpecialty.class);
+            engineer.updateSpecialty(newSpecialty);
+            System.out.println("Specialty updated for " + engineer.getName());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void requestParts() {
-        System.out.println("(not wired yet)");
+        try {
+            String employeeId = input.readText("Engineer Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
+            if (engineer == null) {
+                System.out.println("Engineer not found.");
+                return;
+            }
+            String partType = input.readText("Part type: ");
+            if ("EXIT".equals(partType)) return;
+            int quantity = input.readInt("Quantity: ");
+            boolean result = engineer.requestParts(partType, quantity);
+            System.out.println("Parts request: " + (result ? "success" : "failed (engineer not assigned)"));
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void completeRace() {
