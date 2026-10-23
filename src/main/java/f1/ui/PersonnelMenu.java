@@ -142,7 +142,7 @@ public final class PersonnelMenu {
             input.show("Registered: " + driver);
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -152,17 +152,17 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             boolean cleared = input.readYesNo("Medical clearance (yes/no)");
             String notes = input.readText("Medical notes: ");
             if ("EXIT".equals(notes)) return;
             driver.setMedicalClearance(cleared, notes);
-            System.out.println("Medical clearance updated for " + driver.getName());
+            input.show("Medical clearance updated for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -172,16 +172,16 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             String reason = input.readText("Ban reason: ");
             if ("EXIT".equals(reason)) return;
             driver.applyBan(reason);
-            System.out.println("Ban applied to " + driver.getName());
+            input.show("Ban applied to " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -191,39 +191,39 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             driver.clearBan();
-            System.out.println("Ban cleared for " + driver.getName());
+            input.show("Ban cleared for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
     private void registerEngineer() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void assignDriverToCar() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void assignEngineerToCar() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void releaseEngineer() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void removeDriver() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void removeEngineer() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void requestCarSetup() {
@@ -232,16 +232,16 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             String preference = input.readText("Setup preference: ");
             if ("EXIT".equals(preference)) return;
             driver.requestCarSetup(preference);
-            System.out.println("Car setup requested for " + driver.getName());
+            input.show("Car setup requested for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -251,37 +251,37 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             String newPhone = input.readText("New phone: ");
             if ("EXIT".equals(newPhone)) return;
             driver.updateContact(newPhone);
-            System.out.println("Contact updated for " + driver.getName());
+            input.show("Contact updated for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
     private void updateEngineerContact() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void updateEngineerSpecialty() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void requestParts() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void completeRace() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void completeSetup() {
-        System.out.println("(not wired yet)");
+        input.show("(not wired yet)");
     }
 
     private void setCurrentUserRole() {
@@ -295,7 +295,7 @@ public final class PersonnelMenu {
                 }
             }
             currentUser = new AccessContext(role, actorId);
-            System.out.println("Current user set to: " + role + (actorId.isEmpty() ? "" : " (" + actorId + ")"));
+            input.show("Current user set to: " + role + (actorId.isEmpty() ? "" : " (" + actorId + ")"));
         } catch (ConsoleInput.ExitRequestedException e) {
         }
     }
