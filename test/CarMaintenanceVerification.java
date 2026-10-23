@@ -71,9 +71,9 @@ public class CarMaintenanceVerification {
         System.out.println("Car maintenance verification passed.");
     }
 
-    private static class DatedCar extends F1Car {
+    private static class DatedCar extends ClassicRaceCar {
         private DatedCar() {
-            super("D1", "Team", "Test", 2026,
+            super("D1", "Team", "Test", 1980, 90, 2020, 300,
                     Clock.fixed(Instant.parse("2026-10-22T12:00:00Z"), ZoneOffset.UTC));
         }
     }

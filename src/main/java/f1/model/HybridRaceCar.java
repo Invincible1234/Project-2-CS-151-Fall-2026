@@ -2,6 +2,7 @@ package f1.model;
 
 import exception.RegulatoryViolationException;
 import java.util.Locale;
+import model.WeatherCondition;
 
 public class HybridRaceCar extends F1Car {
     private static final double MAX_DEPLOYMENT_PER_LAP_MJ = 4.0;
@@ -156,6 +157,51 @@ public class HybridRaceCar extends F1Car {
 
     public String getHybridUpgrade() {
         return hybridUpgrade == null ? "" : hybridUpgrade.name();
+    }
+
+    @Override
+    public double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather) {
+        double remainingDeployment = isSessionActive() && !lapCompleted
+                ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ : MAX_DEPLOYMENT_PER_LAP_MJ;
+        double usableEnergy = Math.min(currentEnergyMJ, remainingDeployment);
+        return calculateLapTimeDelta(circuit, weather, usableEnergy);
+    }
+
+    public double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather, double plannedDeploymentMj) {
+        double baseline = performanceBaseline(circuit, weather);
+        validatePower(mguKPowerKw);
+        if (!Double.isFinite(plannedDeploymentMj) || plannedDeploymentMj < 0) {
+            throw new IllegalArgumentException("Planned deployment must be finite and nonnegative.");
+        }
+        double remainingDeployment = isSessionActive() && !lapCompleted
+                ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ : MAX_DEPLOYMENT_PER_LAP_MJ;
+        if (plannedDeploymentMj > remainingDeployment) {
+            throw new RegulatoryViolationException("Planned deployment exceeds the remaining lap allowance.");
+        }
+        if (plannedDeploymentMj > currentEnergyMJ) {
+            throw new IllegalArgumentException("Planned deployment exceeds current battery charge.");
+        }
+        double powerFraction = mguKPowerKw / MAX_MGU_K_POWER_KW;
+        boolean wet = weather == WeatherCondition.RAIN || weather == WeatherCondition.WET;
+        // Simplified simulation: positive deltas are slower than the circuit baseline.
+        double boostBenefit = plannedDeploymentMj / MAX_DEPLOYMENT_PER_LAP_MJ * powerFraction
+                * (circuit.hasLongStraights() ? 0.06 : 0.015) * (wet ? 0.25 : 1);
+        double fraction = weatherPenaltyFraction(weather) + aeroDeltaFraction(circuit, weather)
+                + (1 - powerFraction) * 0.025 - boostBenefit;
+        return lapTimeDelta(baseline, fraction);
+    }
+
+    @Override
+    public String getRegulatoryComplianceNotes() {
+        boolean withinLimits = mguKPowerKw <= MAX_MGU_K_POWER_KW
+                && currentEnergyMJ >= 0 && currentEnergyMJ <= batteryCapacityMJ
+                && deployedThisLapMJ <= MAX_DEPLOYMENT_PER_LAP_MJ
+                && recoveredThisLapMJ <= MAX_RECOVERY_PER_LAP_MJ;
+        return "Hybrid energy limits " + (withinLimits ? "satisfied" : "violated")
+                + "; MGU-K " + mguKPowerKw + "/350 kW; battery " + currentEnergyMJ
+                + "/" + batteryCapacityMJ + " MJ; deployed " + deployedThisLapMJ
+                + "/4 MJ; recovered " + recoveredThisLapMJ + "/9 MJ this lap; specialist "
+                + (getAssignedEngineer() == null ? "required before race execution" : getAssignedEngineerId());
     }
 
     public String getAssignedEngineerId() {

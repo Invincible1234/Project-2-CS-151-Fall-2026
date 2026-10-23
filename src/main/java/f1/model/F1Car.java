@@ -4,11 +4,17 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Objects;
+import model.WeatherCondition;
 
 public abstract class F1Car implements Raceable {
+    public abstract double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather);
+
+    public abstract String getRegulatoryComplianceNotes();
+
     private static final double MAINTENANCE_INTERVAL_KM = 500.0;
     private final String chassisId;
-    private final String teamName;
+    private String teamName;
+    private Team registeredTeam;
     private final String model;
     private final int year;
     private double totalMileage;
@@ -25,6 +31,7 @@ public abstract class F1Car implements Raceable {
     private AeroConfiguration currentAeroConfig;
     private boolean permanentlyDecommissioned;
     private String scheduledStrategy;
+    private RaceStrategy activeStrategy;
     private Driver assignedDriver;
     private Engineer assignedEngineer;
 
@@ -58,6 +65,27 @@ public abstract class F1Car implements Raceable {
         return teamName;
     }
 
+    public Team getRegisteredTeam() {
+        return registeredTeam;
+    }
+
+    final void changeRegisteredTeam(Team expected, Team replacement) {
+        if (registeredTeam != expected || sessionActive) {
+            throw new IllegalStateException("Car registration does not match the source team.");
+        }
+        registeredTeam = replacement;
+        if (replacement != null) {
+            teamName = replacement.getName();
+        }
+    }
+
+    protected final void changeUnregisteredTeamName(String newTeam) {
+        if (registeredTeam != null) {
+            throw new IllegalStateException("Transfer a registered car using the destination Team object.");
+        }
+        teamName = newTeam;
+    }
+
     public String getModel() {
         return model;
     }
@@ -76,6 +104,10 @@ public abstract class F1Car implements Raceable {
 
     public String getLastSetupDate() {
         return lastSetupDate;
+    }
+
+    protected final LocalDate currentDate() {
+        return LocalDate.now(clock);
     }
 
     public String getPowerUnitType() {
@@ -183,6 +215,9 @@ public abstract class F1Car implements Raceable {
 
     @Override
     public void completeSession() {
+        if (activeStrategy != null) {
+            throw new IllegalStateException("Complete the active strategy through its workflow.");
+        }
         if (!sessionActive) {
             throw new IllegalStateException("There is no active session to complete.");
         }
@@ -204,6 +239,25 @@ public abstract class F1Car implements Raceable {
         preparedSessionType = null;
     }
 
+    protected final void retirePermanently() {
+        if (sessionActive || hasScheduledStrategy() || permanentlyDecommissioned) {
+            throw new IllegalStateException("End commitments before permanently retiring the car.");
+        }
+        if (assignedDriver != null && !assignedDriver.getAssignedChassisIds().contains(chassisId)
+                || assignedEngineer != null && !chassisId.equals(assignedEngineer.getAssignedChassisId())) {
+            throw new IllegalStateException("Repair inconsistent assignments before retiring the car.");
+        }
+        if (assignedDriver != null) {
+            assignedDriver.unassignFromCar(this);
+        }
+        if (assignedEngineer != null) {
+            assignedEngineer.releaseFromCar();
+        }
+        permanentlyDecommissioned = true;
+        outOfServiceReason = "Permanently decommissioned";
+        invalidatePreparation();
+    }
+
     @Override
     public boolean isAvailableForRace() {
         return raceReady && !sessionActive && !permanentlyDecommissioned
@@ -217,6 +271,45 @@ public abstract class F1Car implements Raceable {
         }
         return "Maintenance interval: " + Math.max(0, MAINTENANCE_INTERVAL_KM - mileageSinceService)
                 + " km remaining.";
+    }
+
+    protected final double performanceBaseline(Circuit circuit, WeatherCondition weather) {
+        if (circuit == null || weather == null) {
+            throw new IllegalArgumentException("Circuit and weather are required for performance estimates.");
+        }
+        if (permanentlyDecommissioned || isDueForMaintenance() || !outOfServiceReason.isEmpty()) {
+            throw new IllegalStateException("Performance estimates require a serviceable car.");
+        }
+        return circuit.estimateBaseLapTime();
+    }
+
+    protected static double weatherPenaltyFraction(WeatherCondition weather) {
+        return switch (weather) {
+            case CLEAR -> 0;
+            case CLOUDY -> 0.01;
+            case RAIN -> 0.08;
+            case WET -> 0.15;
+            case EXTREME_HEAT -> 0.03;
+        };
+    }
+
+    protected final double aeroDeltaFraction(Circuit circuit, WeatherCondition weather) {
+        if (currentAeroConfig == null || currentAeroConfig == AeroConfiguration.BALANCED) {
+            return 0;
+        }
+        boolean wet = weather == WeatherCondition.RAIN || weather == WeatherCondition.WET;
+        if (currentAeroConfig == AeroConfiguration.LOW_DRAG) {
+            return circuit.hasLongStraights() && !wet ? -0.015 : 0.015;
+        }
+        return !circuit.hasLongStraights() || wet ? -0.02 : 0.015;
+    }
+
+    protected static double lapTimeDelta(double baseline, double fraction) {
+        double delta = baseline * fraction;
+        if (!Double.isFinite(delta) || !Double.isFinite(baseline + delta) || baseline + delta <= 0) {
+            throw new IllegalArgumentException("Circuit estimate exceeds the supported lap-time range.");
+        }
+        return delta;
     }
 
     public void applyAeroUpgrade(String upgrade) {
@@ -241,7 +334,11 @@ public abstract class F1Car implements Raceable {
     }
 
     public String getScheduledStrategy() {
-        return scheduledStrategy;
+        return activeStrategy == null ? scheduledStrategy : activeStrategy.getStrategyId();
+    }
+
+    public RaceStrategy getActiveStrategy() {
+        return activeStrategy;
     }
 
     public Driver getAssignedDriver() {
@@ -257,7 +354,15 @@ public abstract class F1Car implements Raceable {
     }
 
     public boolean hasScheduledStrategy() {
-        return scheduledStrategy != null && !scheduledStrategy.isBlank();
+        return activeStrategy != null || scheduledStrategy != null && !scheduledStrategy.isBlank();
+    }
+
+    final void beginStrategySession(RaceStrategy strategy) {
+        if (strategy.getCar() != this || hasScheduledStrategy() || !isAvailableForRace()) {
+            throw new IllegalStateException("Car is unavailable for this strategy.");
+        }
+        startSession();
+        activeStrategy = strategy;
     }
 
     void assignDriver(Driver driver) {
@@ -313,6 +418,9 @@ public abstract class F1Car implements Raceable {
         }
         if (permanentlyDecommissioned) {
             throw new IllegalArgumentException("Cannot schedule strategy for decommissioned car.");
+        }
+        if (hasScheduledStrategy() || sessionActive) {
+            throw new IllegalStateException("Car already has a session or strategy commitment.");
         }
         this.scheduledStrategy = strategy.trim();
     }
