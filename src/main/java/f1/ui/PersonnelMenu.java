@@ -1,23 +1,41 @@
 package f1.ui;
 
 import f1.model.Driver;
-import f1.model.Engineer;
-import f1.model.EngineerSpecialty;
+import f1.model.F1Car;
 import f1.model.UserRole;
 import f1.service.PersonnelRegistry;
 import util.AccessContext;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public final class PersonnelMenu {
     private final PersonnelRegistry registry;
     private final ConsoleInput input;
     private AccessContext currentUser;
+    private final List<F1Car> cars = new ArrayList<>();
 
     public PersonnelMenu(PersonnelRegistry registry, ConsoleInput input) {
         this.registry = registry;
         this.input = input;
         this.currentUser = new AccessContext(UserRole.VIEWER, "");
+    }
+
+    private F1Car findCarByChassisId(String chassisId) {
+        for (F1Car car : cars) {
+            if (car.getChassisId().equals(chassisId)) {
+                return car;
+            }
+        }
+        return null;
+    }
+
+    private void ensureCarsAvailable() {
+        if (cars.isEmpty()) {
+            System.out.println("No cars available. Create a car first.");
+            throw new IllegalStateException("No cars available");
+        }
     }
 
     public void run() {
@@ -89,19 +107,78 @@ public final class PersonnelMenu {
     }
 
     private void registerDriver() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            String name = input.readText("Name: ");
+            if ("EXIT".equals(name)) return;
+            String licenseNumber = input.readText("License number: ");
+            if ("EXIT".equals(licenseNumber)) return;
+            int age = input.readInt("Age: ");
+            String phone = input.readText("Phone: ");
+            if ("EXIT".equals(phone)) return;
+            Driver driver = registry.registerDriver(driverId, name, licenseNumber, age, phone);
+            System.out.println("Registered: " + driver);
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void updateMedicalClearance() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            Driver driver = registry.findDriverById(driverId);
+            if (driver == null) {
+                System.out.println("Driver not found.");
+                return;
+            }
+            boolean cleared = input.readYesNo("Medical clearance (yes/no)");
+            String notes = input.readText("Medical notes: ");
+            if ("EXIT".equals(notes)) return;
+            driver.setMedicalClearance(cleared, notes);
+            System.out.println("Medical clearance updated for " + driver.getName());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void applyBan() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            Driver driver = registry.findDriverById(driverId);
+            if (driver == null) {
+                System.out.println("Driver not found.");
+                return;
+            }
+            String reason = input.readText("Ban reason: ");
+            if ("EXIT".equals(reason)) return;
+            driver.applyBan(reason);
+            System.out.println("Ban applied to " + driver.getName());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void clearBan() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            Driver driver = registry.findDriverById(driverId);
+            if (driver == null) {
+                System.out.println("Driver not found.");
+                return;
+            }
+            driver.clearBan();
+            System.out.println("Ban cleared for " + driver.getName());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void registerEngineer() {
@@ -129,11 +206,41 @@ public final class PersonnelMenu {
     }
 
     private void requestCarSetup() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            Driver driver = registry.findDriverById(driverId);
+            if (driver == null) {
+                System.out.println("Driver not found.");
+                return;
+            }
+            String preference = input.readText("Setup preference: ");
+            if ("EXIT".equals(preference)) return;
+            driver.requestCarSetup(preference);
+            System.out.println("Car setup requested for " + driver.getName());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void updateDriverContact() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            Driver driver = registry.findDriverById(driverId);
+            if (driver == null) {
+                System.out.println("Driver not found.");
+                return;
+            }
+            String newPhone = input.readText("New phone: ");
+            if ("EXIT".equals(newPhone)) return;
+            driver.updateContact(newPhone);
+            System.out.println("Contact updated for " + driver.getName());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void updateEngineerContact() {
@@ -173,7 +280,6 @@ public final class PersonnelMenu {
     }
 
     public static void main(String[] args) {
-        boolean scannerExists = false;
         try (Scanner scanner = new Scanner(System.in)) {
             PersonnelRegistry registry = new PersonnelRegistry();
             ConsoleInput input = new ConsoleInput(scanner);
