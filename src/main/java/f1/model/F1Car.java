@@ -357,6 +357,13 @@ public abstract class F1Car implements Raceable {
         return activeStrategy != null || scheduledStrategy != null && !scheduledStrategy.isBlank();
     }
 
+    public boolean scheduleStrategy(RaceStrategy strategy) {
+        if (strategy == null || strategy.getCar() != this) {
+            throw new IllegalArgumentException("Strategy must belong to this car.");
+        }
+        return strategy.startStrategy();
+    }
+
     final void beginStrategySession(RaceStrategy strategy) {
         if (strategy.getCar() != this || hasScheduledStrategy() || !isAvailableForRace()) {
             throw new IllegalStateException("Car is unavailable for this strategy.");
