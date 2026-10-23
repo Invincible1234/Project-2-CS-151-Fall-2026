@@ -6,6 +6,7 @@ import java.util.List;
 import util.AccessContext;
 import util.AccessPolicy;
 import util.Constants;
+import util.InstanceLimit;
 import util.Validation;
 
 public class Driver {
@@ -29,6 +30,7 @@ public class Driver {
         this.licenseNumber = Validation.requireText(licenseNumber, "License number");
         this.age = Validation.requireAge(age);
         this.phone = Validation.requirePhone(phone);
+        InstanceLimit.checkAndCount(Driver.class);
         this.assignedChassisIds = new ArrayList<>();
         this.assignedCars = new ArrayList<>();
         this.championshipPoints = 0;
