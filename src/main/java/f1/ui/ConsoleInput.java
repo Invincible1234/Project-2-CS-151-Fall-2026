@@ -31,7 +31,13 @@ public final class ConsoleInput {
     }
 
     public int readInt(String prompt) {
-        return integer(prompt, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        return read(prompt, value -> {
+            try {
+                return Integer.parseInt(value);
+            } catch (NumberFormatException error) {
+                throw new IllegalArgumentException("Invalid integer. Enter a whole number.");
+            }
+        });
     }
 
     public <E extends Enum<E>> E readEnum(String prompt, Class<E> type) {

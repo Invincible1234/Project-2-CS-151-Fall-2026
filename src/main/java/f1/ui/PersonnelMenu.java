@@ -12,18 +12,39 @@ import util.AccessContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
+import java.io.InputStreamReader;
+import f1.model.Team;
 
 public final class PersonnelMenu {
     private final PersonnelRegistry registry;
     private final ConsoleInput input;
     private AccessContext currentUser;
+    private Team team;
     private final List<F1Car> cars = new ArrayList<>();
 
     public PersonnelMenu(PersonnelRegistry registry, ConsoleInput input) {
         this.registry = registry;
         this.input = input;
         this.currentUser = new AccessContext(UserRole.VIEWER, "");
+    }
+
+    public PersonnelMenu(Team team, ConsoleInput input) {
+        this(new PersonnelRegistry(team), input);
+        this.team = team;
+        cars.addAll(team.getCars());
+    }
+
+    public UserRole open(UserRole role) {
+        currentUser = new AccessContext(role, "");
+        printMenu();
+        int action = input.integer("Personnel action (0 Back)", 0, 21);
+        if (action != 0) {
+            handleChoice(Integer.toString(action));
+        }
+        if (input.isExitRequested()) {
+            throw new ConsoleInput.ExitRequestedException();
+        }
+        return currentUser.getRole();
     }
 
     private F1Car findCarByChassisId(String chassisId) {
@@ -37,56 +58,56 @@ public final class PersonnelMenu {
 
     private void ensureCarsAvailable() {
         if (cars.isEmpty()) {
-            System.out.println("No cars available. Create a car first.");
+            input.show("No cars available. Create a car first.");
             throw new IllegalStateException("No cars available");
         }
     }
 
     public void run() {
-        System.out.println("=== F1 Team Personnel Management ===");
+        input.show("=== F1 Team Personnel Management ===");
         while (true) {
             printMenu();
             try {
                 String choice = input.readText("Select option: ");
-                if ("EXIT".equals(choice)) {
-                    System.out.println("Exiting...");
+                if ("EXIT".equals(choice) || "0".equals(choice)) {
+                    input.show("Exiting...");
                     break;
                 }
                 handleChoice(choice);
             } catch (ConsoleInput.ExitRequestedException e) {
-                System.out.println("Exiting...");
+                input.show("Exiting...");
                 break;
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                input.show("Error: " + e.getMessage());
             }
-            System.out.println();
+            input.show("");
         }
     }
 
     private void printMenu() {
-        System.out.println("\n--- Personnel Menu ---");
-        System.out.println("1. Register Driver");
-        System.out.println("2. Update Medical Clearance");
-        System.out.println("3. Apply Ban");
-        System.out.println("4. Clear Ban");
-        System.out.println("5. Register Engineer");
-        System.out.println("6. Assign Driver to Car");
-        System.out.println("7. Assign Engineer to Car");
-        System.out.println("8. Release Engineer");
-        System.out.println("9. Remove Driver");
-        System.out.println("10. Remove Engineer");
-        System.out.println("11. Request Car Setup");
-        System.out.println("12. Update Driver Contact");
-        System.out.println("13. Update Engineer Contact");
-        System.out.println("14. Update Engineer Specialty");
-        System.out.println("15. Request Parts");
-        System.out.println("16. Complete Race");
-        System.out.println("17. Complete Setup");
-        System.out.println("18. Set Current User Role");
-        System.out.println("19. Create Hybrid Car");
-        System.out.println("20. Create Classic Car");
-        System.out.println("21. List Cars");
-        System.out.println("EXIT. Quit");
+        input.show("\n--- Personnel Menu ---");
+        input.show("1. Register Driver");
+        input.show("2. Update Medical Clearance");
+        input.show("3. Apply Ban");
+        input.show("4. Clear Ban");
+        input.show("5. Register Engineer");
+        input.show("6. Assign Driver to Car");
+        input.show("7. Assign Engineer to Car");
+        input.show("8. Release Engineer");
+        input.show("9. Remove Driver");
+        input.show("10. Remove Engineer");
+        input.show("11. Request Car Setup");
+        input.show("12. Update Driver Contact");
+        input.show("13. Update Engineer Contact");
+        input.show("14. Update Engineer Specialty");
+        input.show("15. Request Parts");
+        input.show("16. Complete Race");
+        input.show("17. Complete Setup");
+        input.show("18. Set Current User Role");
+        input.show("19. Create Hybrid Car");
+        input.show("20. Create Classic Car");
+        input.show("21. List Cars");
+        input.show("0. Back | EXIT. Quit");
     }
 
     private void handleChoice(String choice) {
@@ -112,7 +133,7 @@ public final class PersonnelMenu {
             case "19" -> createHybridCar();
             case "20" -> createClassicCar();
             case "21" -> listCars();
-            default -> System.out.println("Unrecognized choice: " + choice);
+            default -> input.show("Unrecognized choice: " + choice);
         }
     }
 
@@ -128,10 +149,10 @@ public final class PersonnelMenu {
             String phone = input.readText("Phone: ");
             if ("EXIT".equals(phone)) return;
             Driver driver = registry.registerDriver(driverId, name, licenseNumber, age, phone);
-            System.out.println("Registered: " + driver);
+            input.show("Registered: " + driver);
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -141,17 +162,17 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             boolean cleared = input.readYesNo("Medical clearance (yes/no)");
             String notes = input.readText("Medical notes: ");
             if ("EXIT".equals(notes)) return;
             driver.setMedicalClearance(cleared, notes);
-            System.out.println("Medical clearance updated for " + driver.getName());
+            input.show("Medical clearance updated for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -161,16 +182,16 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             String reason = input.readText("Ban reason: ");
             if ("EXIT".equals(reason)) return;
             driver.applyBan(reason);
-            System.out.println("Ban applied to " + driver.getName());
+            input.show("Ban applied to " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -180,14 +201,14 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             driver.clearBan();
-            System.out.println("Ban cleared for " + driver.getName());
+            input.show("Ban cleared for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -202,10 +223,10 @@ public final class PersonnelMenu {
             String phone = input.readText("Phone: ");
             if ("EXIT".equals(phone)) return;
             Engineer engineer = registry.registerEngineer(employeeId, name, specialty, experienceYears, phone);
-            System.out.println("Registered: " + engineer);
+            input.show("Registered: " + engineer);
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -216,21 +237,21 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             String chassisId = input.readText("Chassis ID: ");
             if ("EXIT".equals(chassisId)) return;
             F1Car car = findCarByChassisId(chassisId);
             if (car == null) {
-                System.out.println("Car not found.");
+                input.show("Car not found.");
                 return;
             }
             driver.assignToCar(car);
-            System.out.println("Driver assigned to " + chassisId);
+            input.show("Driver assigned to " + chassisId);
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -241,21 +262,21 @@ public final class PersonnelMenu {
             if ("EXIT".equals(employeeId)) return;
             Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
             if (engineer == null) {
-                System.out.println("Engineer not found.");
+                input.show("Engineer not found.");
                 return;
             }
             String chassisId = input.readText("Chassis ID: ");
             if ("EXIT".equals(chassisId)) return;
             F1Car car = findCarByChassisId(chassisId);
             if (car == null) {
-                System.out.println("Car not found.");
+                input.show("Car not found.");
                 return;
             }
             engineer.assignToCar(car);
-            System.out.println("Engineer assigned to " + chassisId);
+            input.show("Engineer assigned to " + chassisId);
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -265,14 +286,14 @@ public final class PersonnelMenu {
             if ("EXIT".equals(employeeId)) return;
             Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
             if (engineer == null) {
-                System.out.println("Engineer not found.");
+                input.show("Engineer not found.");
                 return;
             }
             engineer.releaseFromCar();
-            System.out.println("Engineer released from car.");
+            input.show("Engineer released from car.");
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -281,10 +302,10 @@ public final class PersonnelMenu {
             String driverId = input.readText("Driver ID: ");
             if ("EXIT".equals(driverId)) return;
             registry.removeDriver(driverId);
-            System.out.println("Driver removed.");
+            input.show("Driver removed.");
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -293,10 +314,10 @@ public final class PersonnelMenu {
             String employeeId = input.readText("Engineer Employee ID: ");
             if ("EXIT".equals(employeeId)) return;
             registry.removeEngineer(employeeId);
-            System.out.println("Engineer removed.");
+            input.show("Engineer removed.");
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -306,16 +327,16 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             String preference = input.readText("Setup preference: ");
             if ("EXIT".equals(preference)) return;
             driver.requestCarSetup(preference);
-            System.out.println("Car setup requested for " + driver.getName());
+            input.show("Car setup requested for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -325,16 +346,16 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             String newPhone = input.readText("New phone: ");
             if ("EXIT".equals(newPhone)) return;
             driver.updateContact(newPhone);
-            System.out.println("Contact updated for " + driver.getName());
+            input.show("Contact updated for " + driver.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -344,16 +365,16 @@ public final class PersonnelMenu {
             if ("EXIT".equals(employeeId)) return;
             Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
             if (engineer == null) {
-                System.out.println("Engineer not found.");
+                input.show("Engineer not found.");
                 return;
             }
             String newPhone = input.readText("New phone: ");
             if ("EXIT".equals(newPhone)) return;
             engineer.updateContact(newPhone);
-            System.out.println("Contact updated for " + engineer.getName());
+            input.show("Contact updated for " + engineer.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -363,15 +384,15 @@ public final class PersonnelMenu {
             if ("EXIT".equals(employeeId)) return;
             Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
             if (engineer == null) {
-                System.out.println("Engineer not found.");
+                input.show("Engineer not found.");
                 return;
             }
             EngineerSpecialty newSpecialty = input.readEnum("New specialty (HYBRID_POWER_UNIT, AERODYNAMICS, RACE_ENGINEERING, CLASSIC_RESTORATION): ", EngineerSpecialty.class);
             engineer.updateSpecialty(newSpecialty);
-            System.out.println("Specialty updated for " + engineer.getName());
+            input.show("Specialty updated for " + engineer.getName());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -381,17 +402,17 @@ public final class PersonnelMenu {
             if ("EXIT".equals(employeeId)) return;
             Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
             if (engineer == null) {
-                System.out.println("Engineer not found.");
+                input.show("Engineer not found.");
                 return;
             }
             String partType = input.readText("Part type: ");
             if ("EXIT".equals(partType)) return;
             int quantity = input.readInt("Quantity: ");
             boolean result = engineer.requestParts(partType, quantity);
-            System.out.println("Parts request: " + (result ? "success" : "failed (engineer not assigned)"));
+            input.show("Parts request: " + (result ? "success" : "failed (engineer not assigned)"));
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -401,14 +422,14 @@ public final class PersonnelMenu {
             if ("EXIT".equals(driverId)) return;
             Driver driver = registry.findDriverById(driverId);
             if (driver == null) {
-                System.out.println("Driver not found.");
+                input.show("Driver not found.");
                 return;
             }
             int position = input.readInt("Finishing position (1-20): ");
-            System.out.println("Race completion requires a Circuit (not available in personnel menu).");
+            input.show("Race completion requires a Circuit (not available in personnel menu).");
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -418,13 +439,13 @@ public final class PersonnelMenu {
             if ("EXIT".equals(employeeId)) return;
             Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
             if (engineer == null) {
-                System.out.println("Engineer not found.");
+                input.show("Engineer not found.");
                 return;
             }
-            System.out.println("Setup completion requires a RaceStrategy (not available in personnel menu).");
+            input.show("Setup completion requires a RaceStrategy (not available in personnel menu).");
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -439,7 +460,7 @@ public final class PersonnelMenu {
                 }
             }
             currentUser = new AccessContext(role, actorId);
-            System.out.println("Current user set to: " + role + (actorId.isEmpty() ? "" : " (" + actorId + ")"));
+            input.show("Current user set to: " + role + (actorId.isEmpty() ? "" : " (" + actorId + ")"));
         } catch (ConsoleInput.ExitRequestedException e) {
         }
     }
@@ -449,7 +470,7 @@ public final class PersonnelMenu {
             String chassisId = input.readText("Chassis ID: ");
             if ("EXIT".equals(chassisId)) return;
             if (findCarByChassisId(chassisId) != null) {
-                System.out.println("Chassis ID already exists.");
+                input.show("Chassis ID already exists.");
                 return;
             }
             String teamName = input.readText("Team name: ");
@@ -460,11 +481,14 @@ public final class PersonnelMenu {
             double batteryCapacity = input.readInt("Battery capacity (MJ): ");
             double currentEnergy = input.readInt("Current energy (MJ): ");
             HybridRaceCar car = new HybridRaceCar(chassisId, teamName, model, year, batteryCapacity, currentEnergy);
+            if (team != null) {
+                team.addCar(car);
+            }
             cars.add(car);
-            System.out.println("Created hybrid car: " + car.getChassisId());
+            input.show("Created hybrid car: " + car.getChassisId());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
@@ -473,7 +497,7 @@ public final class PersonnelMenu {
             String chassisId = input.readText("Chassis ID: ");
             if ("EXIT".equals(chassisId)) return;
             if (findCarByChassisId(chassisId) != null) {
-                System.out.println("Chassis ID already exists.");
+                input.show("Chassis ID already exists.");
                 return;
             }
             String teamName = input.readText("Team name: ");
@@ -485,31 +509,30 @@ public final class PersonnelMenu {
             int restorationYear = input.readInt("Restoration year: ");
             double powerLimit = input.readInt("Power limit (kW): ");
             ClassicRaceCar car = new ClassicRaceCar(chassisId, teamName, model, year, originalityScore, restorationYear, powerLimit);
+            if (team != null) {
+                team.addCar(car);
+            }
             cars.add(car);
-            System.out.println("Created classic car: " + car.getChassisId());
+            input.show("Created classic car: " + car.getChassisId());
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            input.show("Error: " + e.getMessage());
         }
     }
 
     private void listCars() {
         if (cars.isEmpty()) {
-            System.out.println("No cars available.");
+            input.show("No cars available.");
             return;
         }
-        System.out.println("Available cars:");
+        input.show("Available cars:");
         for (F1Car car : cars) {
-            System.out.println("  " + car.getChassisId() + " (" + car.getClass().getSimpleName() + ") - " + car.getTeamName() + " " + car.getModel() + " " + car.getYear());
+            input.show("  " + car.getChassisId() + " (" + car.getClass().getSimpleName() + ") - " + car.getTeamName() + " " + car.getModel() + " " + car.getYear());
         }
     }
 
     public static void main(String[] args) {
-        try (Scanner scanner = new Scanner(System.in)) {
-            PersonnelRegistry registry = new PersonnelRegistry();
-            ConsoleInput input = new ConsoleInput(scanner);
-            PersonnelMenu menu = new PersonnelMenu(registry, input);
-            menu.run();
-        }
+        ConsoleInput input = new ConsoleInput(new InputStreamReader(System.in), System.out);
+        new PersonnelMenu(new PersonnelRegistry(), input).run();
     }
 }
