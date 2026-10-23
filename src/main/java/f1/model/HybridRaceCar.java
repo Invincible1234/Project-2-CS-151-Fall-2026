@@ -119,6 +119,31 @@ public class HybridRaceCar extends F1Car {
         lapCompleted = false;
     }
 
+    final void validateStrategyEnergyCompletion(HybridEnergyPlan plan) {
+        if (plan == null || !isSessionActive() || currentLapNumber != 1) {
+            throw new IllegalStateException("Complete a strategy during its single active lap.");
+        }
+        validatePower(mguKPowerKw);
+        double deployment = plan.getDeploymentMj() - deployedThisLapMJ;
+        double recovery = plan.getRecoveryMj() - recoveredThisLapMJ;
+        double finalCharge = currentEnergyMJ - deployment + recovery;
+        if (deployment < 0 || recovery < 0 || deployment > currentEnergyMJ
+                || !Double.isFinite(finalCharge) || finalCharge < 0 || finalCharge > batteryCapacityMJ
+                || lapCompleted && (deployment != 0 || recovery != 0)) {
+            throw new IllegalStateException("Current lap energy cannot complete the approved strategy plan.");
+        }
+    }
+
+    final void finishStrategyEnergy(HybridEnergyPlan plan) {
+        validateStrategyEnergyCompletion(plan);
+        currentEnergyMJ = currentEnergyMJ - (plan.getDeploymentMj() - deployedThisLapMJ)
+                + (plan.getRecoveryMj() - recoveredThisLapMJ);
+        deployedThisLapMJ = plan.getDeploymentMj();
+        recoveredThisLapMJ = plan.getRecoveryMj();
+        currentLapNumber = 0;
+        lapCompleted = false;
+    }
+
     public void resetEnergyState() {
         if (isSessionActive() || hasScheduledStrategy() || isPermanentlyDecommissioned()) {
             throw new IllegalStateException("Energy state can only be reset on an idle, uncommitted car.");

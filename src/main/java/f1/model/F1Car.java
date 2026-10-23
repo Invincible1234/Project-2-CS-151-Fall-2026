@@ -372,6 +372,29 @@ public abstract class F1Car implements Raceable {
         activeStrategy = strategy;
     }
 
+    final void validateStrategyCompletion(RaceStrategy strategy, double distanceKm) {
+        if (activeStrategy != strategy || !sessionActive || strategy.getCar() != this) {
+            throw new IllegalStateException("This strategy does not own an active car session.");
+        }
+        if (!Double.isFinite(distanceKm) || distanceKm <= 0
+                || !Double.isFinite(totalMileage + distanceKm)
+                || !Double.isFinite(mileageSinceService + distanceKm)
+                || totalMileage + distanceKm <= totalMileage
+                || mileageSinceService + distanceKm <= mileageSinceService) {
+            throw new IllegalArgumentException("Completed distance must fit the supported mileage range.");
+        }
+    }
+
+    final void finishStrategySession(RaceStrategy strategy, double distanceKm) {
+        validateStrategyCompletion(strategy, distanceKm);
+        totalMileage += distanceKm;
+        mileageSinceService += distanceKm;
+        sessionActive = false;
+        activeStrategy = null;
+        scheduledStrategy = "";
+        invalidatePreparation();
+    }
+
     void assignDriver(Driver driver) {
         requireAssignable();
         if (driver == null || assignedDriver != null) {
