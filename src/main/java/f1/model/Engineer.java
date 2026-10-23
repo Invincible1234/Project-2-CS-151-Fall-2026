@@ -44,9 +44,7 @@ public class Engineer {
         if (!isAvailable || assignedCar != null) {
             throw new IllegalStateException("Engineer is already assigned or unavailable.");
         }
-        boolean compatible = car instanceof HybridRaceCar && "HYBRID_POWER_UNIT".equals(specialty)
-                || car instanceof ClassicRaceCar && "CLASSIC_RESTORATION".equals(specialty);
-        if (!compatible) {
+        if (!isQualifiedFor(car)) {
             throw new IllegalArgumentException("Engineer specialty is incompatible with this car.");
         }
         car.assignEngineer(this);
@@ -54,6 +52,11 @@ public class Engineer {
         assignedChassisId = car.getChassisId();
         isAvailable = false;
         return true;
+    }
+
+    public boolean isQualifiedFor(F1Car car) {
+        return car instanceof HybridRaceCar && "HYBRID_POWER_UNIT".equals(specialty)
+                || car instanceof ClassicRaceCar && "CLASSIC_RESTORATION".equals(specialty);
     }
 
     public boolean completeSetup(RaceStrategy strategy) { return false; }
