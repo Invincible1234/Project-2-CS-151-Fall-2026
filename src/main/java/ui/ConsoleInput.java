@@ -1,6 +1,8 @@
 package ui;
 
 import java.io.PrintStream;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
@@ -85,6 +87,20 @@ public final class ConsoleInput {
             } catch (IllegalArgumentException ignored) {
                 print("Choose one of the displayed values.");
             }
+        }
+    }
+
+    public LocalDate pastOrPresentDate(String prompt) {
+        while (true) {
+            String value = text(prompt + " [YYYY-MM-DD, today or earlier]");
+            try {
+                LocalDate date = LocalDate.parse(value);
+                if (!date.isAfter(LocalDate.now())) {
+                    return date;
+                }
+            } catch (DateTimeParseException ignored) {
+            }
+            print("Enter a valid date that is not in the future.");
         }
     }
 
