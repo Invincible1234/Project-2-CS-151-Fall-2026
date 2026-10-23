@@ -10,6 +10,7 @@ import java.util.function.Function;
 public final class ConsoleInput {
     private final Scanner scanner;
     private final PrintStream output;
+    private boolean exitRequested;
 
     public ConsoleInput(Readable source, PrintStream output) {
         scanner = new Scanner(java.util.Objects.requireNonNull(source));
@@ -49,14 +50,23 @@ public final class ConsoleInput {
         output.println(message);
     }
 
+    public boolean isExitRequested() {
+        return exitRequested;
+    }
+
     public String text(String prompt) {
+        if (exitRequested) {
+            throw new Exit();
+        }
         while (true) {
             output.print(prompt + " (EXIT to quit): ");
             if (!scanner.hasNextLine()) {
+                exitRequested = true;
                 throw new Exit();
             }
             String value = scanner.nextLine().strip();
             if (value.equalsIgnoreCase("EXIT")) {
+                exitRequested = true;
                 throw new Exit();
             }
             if (!value.isEmpty()) {

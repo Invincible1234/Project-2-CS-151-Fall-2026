@@ -6,35 +6,27 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Scanner;
 
 public final class ConsoleInput {
-    private final Scanner scanner;
-    private final PrintStream output;
+    private final f1.ui.ConsoleInput shared;
 
     public ConsoleInput(Readable source, PrintStream output) {
-        this.scanner = new Scanner(Objects.requireNonNull(source, "Input source is required."));
-        this.output = Objects.requireNonNull(output, "Output is required.");
+        this(new f1.ui.ConsoleInput(source, output));
+    }
+
+    public ConsoleInput(f1.ui.ConsoleInput shared) {
+        this.shared = Objects.requireNonNull(shared, "Shared input is required.");
     }
 
     public void print(String message) {
-        output.println(message);
+        shared.show(message);
     }
 
     public String text(String prompt) {
-        while (true) {
-            print(prompt + " (EXIT to quit)");
-            if (!scanner.hasNextLine()) {
-                throw new ExitRequested();
-            }
-            String value = scanner.nextLine().strip();
-            if (value.equalsIgnoreCase("EXIT")) {
-                throw new ExitRequested();
-            }
-            if (!value.isEmpty()) {
-                return value;
-            }
-            print("Enter a nonblank value.");
+        try {
+            return shared.text(prompt);
+        } catch (f1.ui.ConsoleInput.ExitRequestedException exit) {
+            throw new ExitRequested();
         }
     }
 

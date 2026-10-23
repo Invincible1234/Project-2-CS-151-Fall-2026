@@ -5,6 +5,7 @@ import exception.DuplicateEntityException;
 import f1.model.Driver;
 import f1.model.Engineer;
 import f1.model.EngineerSpecialty;
+import f1.model.Team;
 import java.util.ArrayList;
 import java.util.List;
 import util.Constants;
@@ -13,6 +14,18 @@ import util.Validation;
 public final class PersonnelRegistry {
     private final List<Driver> drivers = new ArrayList<>();
     private final List<Engineer> engineers = new ArrayList<>();
+
+    private final Team team;
+
+    public PersonnelRegistry() {
+        team = null;
+    }
+
+    public PersonnelRegistry(Team team) {
+        this.team = java.util.Objects.requireNonNull(team, "Team is required.");
+        drivers.addAll(team.getDrivers());
+        engineers.addAll(team.getEngineers());
+    }
 
     public Driver registerDriver(String driverId, String name, String licenseNumber, int age, String phone) {
         String id = Validation.requireText(driverId, "Driver ID");
@@ -25,6 +38,9 @@ public final class PersonnelRegistry {
         }
         ensureRoom(drivers, "driver");
         Driver driver = new Driver(driverId, name, licenseNumber, age, phone);
+        if (team != null) {
+            team.addDriver(driver);
+        }
         drivers.add(driver);
         return driver;
     }
@@ -37,6 +53,9 @@ public final class PersonnelRegistry {
         }
         ensureRoom(engineers, "engineer");
         Engineer engineer = new Engineer(employeeId, name, specialty, experienceYears, phone);
+        if (team != null) {
+            team.addEngineer(engineer);
+        }
         engineers.add(engineer);
         return engineer;
     }
@@ -66,7 +85,11 @@ public final class PersonnelRegistry {
         if (driver == null) {
             throw new IllegalArgumentException("No driver is registered with this id.");
         }
-        driver.releaseAllAssignments();
+        if (team == null) {
+            driver.releaseAllAssignments();
+        } else {
+            team.removeDriver(driver);
+        }
         drivers.remove(driver);
     }
 
@@ -75,7 +98,11 @@ public final class PersonnelRegistry {
         if (engineer == null) {
             throw new IllegalArgumentException("No engineer is registered with this id.");
         }
-        engineer.releaseFromCar();
+        if (team == null) {
+            engineer.releaseFromCar();
+        } else {
+            team.removeEngineer(engineer);
+        }
         engineers.remove(engineer);
     }
 
