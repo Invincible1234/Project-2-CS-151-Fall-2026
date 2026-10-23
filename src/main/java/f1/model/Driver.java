@@ -132,7 +132,7 @@ public class Driver {
         }
     }
 
-    void releaseAllAssignments() {
+    public void releaseAllAssignments() {
         requireReleasableAssignments();
         for (F1Car car : List.copyOf(assignedCars)) {
             unassignFromCar(car);
