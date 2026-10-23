@@ -22,4 +22,8 @@ public final class InstanceLimit {
         }
         COUNTS.put(type, current + 1);
     }
+
+    public static void resetForTesting() {
+        COUNTS.clear();
+    }
 }

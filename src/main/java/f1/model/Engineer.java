@@ -2,6 +2,7 @@ package f1.model;
 
 import util.AccessContext;
 import util.AccessPolicy;
+import util.InstanceLimit;
 import util.Validation;
 
 public class Engineer {
@@ -24,6 +25,7 @@ public class Engineer {
         this.specialty = specialty;
         this.experienceYears = Validation.requireExperienceYears(experienceYears);
         this.phone = Validation.requirePhone(phone);
+        InstanceLimit.checkAndCount(Engineer.class);
         this.isAvailable = true;
         this.assignedChassisId = "";
     }
