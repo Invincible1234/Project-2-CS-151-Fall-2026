@@ -123,7 +123,7 @@ public final class RaceStrategyPlanningVerification {
     }
 
     private static Engineer engineer() {
-        return new Engineer("ENGINEER", "Engineer", "HYBRID_POWER_UNIT", 5, "5551234567");
+        return new Engineer("ENGINEER", "Engineer", f1.model.EngineerSpecialty.HYBRID_POWER_UNIT, 5, "5551234567");
     }
 
     private static Circuit circuit() {

@@ -59,7 +59,7 @@ public class Engineer {
         if (!isAvailable || assignedCar != null) {
             throw new IllegalStateException("Engineer is already assigned or unavailable.");
         }
-        if (!specialtyMatches(car)) {
+        if (!isQualifiedFor(car)) {
             throw new IllegalArgumentException("Engineer specialty is incompatible with this car.");
         }
         car.assignEngineer(this);
@@ -108,7 +108,7 @@ public class Engineer {
         return AccessPolicy.visiblePhone(caller, employeeId, phone);
     }
 
-    private boolean specialtyMatches(F1Car car) {
+    public boolean isQualifiedFor(F1Car car) {
         if (car instanceof HybridRaceCar hybrid) {
             if (hybrid.requiresSpecialistEngineer()) {
                 return specialty == EngineerSpecialty.HYBRID_POWER_UNIT;

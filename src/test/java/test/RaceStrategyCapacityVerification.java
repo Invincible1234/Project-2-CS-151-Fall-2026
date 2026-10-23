@@ -14,7 +14,7 @@ public final class RaceStrategyCapacityVerification {
     public static void main(String[] args) {
         Team team = new Team("CAPACITY", "Apex", 1, 0);
         F1Car car = new HybridRaceCar("CAR", "Apex", "Hybrid", 2026, 4, 2);
-        Engineer engineer = new Engineer("ENGINEER", "Engineer", "HYBRID_POWER_UNIT", 5, "5551234567");
+        Engineer engineer = new Engineer("ENGINEER", "Engineer", f1.model.EngineerSpecialty.HYBRID_POWER_UNIT, 5, "5551234567");
         Circuit circuit = new Circuit("CIRCUIT", "Circuit", 5, 12, true, WeatherCondition.CLEAR, "Location");
         team.addCar(car);
         team.addEngineer(engineer);

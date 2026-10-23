@@ -31,6 +31,7 @@ public abstract class F1Car implements Raceable {
     private AeroConfiguration currentAeroConfig;
     private boolean permanentlyDecommissioned;
     private String scheduledStrategy;
+    private RaceStrategy activeStrategy;
     private Driver assignedDriver;
     private Engineer assignedEngineer;
 
@@ -214,6 +215,9 @@ public abstract class F1Car implements Raceable {
 
     @Override
     public void completeSession() {
+        if (activeStrategy != null) {
+            throw new IllegalStateException("Complete the active strategy through its workflow.");
+        }
         if (!sessionActive) {
             throw new IllegalStateException("There is no active session to complete.");
         }
@@ -330,7 +334,11 @@ public abstract class F1Car implements Raceable {
     }
 
     public String getScheduledStrategy() {
-        return scheduledStrategy;
+        return activeStrategy == null ? scheduledStrategy : activeStrategy.getStrategyId();
+    }
+
+    public RaceStrategy getActiveStrategy() {
+        return activeStrategy;
     }
 
     public Driver getAssignedDriver() {
@@ -346,7 +354,15 @@ public abstract class F1Car implements Raceable {
     }
 
     public boolean hasScheduledStrategy() {
-        return scheduledStrategy != null && !scheduledStrategy.isBlank();
+        return activeStrategy != null || scheduledStrategy != null && !scheduledStrategy.isBlank();
+    }
+
+    final void beginStrategySession(RaceStrategy strategy) {
+        if (strategy.getCar() != this || hasScheduledStrategy() || !isAvailableForRace()) {
+            throw new IllegalStateException("Car is unavailable for this strategy.");
+        }
+        startSession();
+        activeStrategy = strategy;
     }
 
     void assignDriver(Driver driver) {
@@ -402,6 +418,9 @@ public abstract class F1Car implements Raceable {
         }
         if (permanentlyDecommissioned) {
             throw new IllegalArgumentException("Cannot schedule strategy for decommissioned car.");
+        }
+        if (hasScheduledStrategy() || sessionActive) {
+            throw new IllegalStateException("Car already has a session or strategy commitment.");
         }
         this.scheduledStrategy = strategy.trim();
     }
