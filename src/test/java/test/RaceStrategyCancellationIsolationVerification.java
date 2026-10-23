@@ -17,7 +17,7 @@ public final class RaceStrategyCancellationIsolationVerification {
         verifyUntouchedEnergy();
         verifyOtherPlan();
         verifyOtherCar();
-        verifyCancellationAfterFailedCompletion();
+        verifyCancellationAfterRejectedActions();
         System.out.println("PASS: Strategy cancellation isolation (" + checks + " checks)");
     }
 
@@ -26,13 +26,13 @@ public final class RaceStrategyCancellationIsolationVerification {
         context.strategy().markReady();
         context.strategy().startStrategy();
         HybridRaceCar car = (HybridRaceCar) context.car();
-        car.completeLap();
-        car.startNextLap();
-        context.strategy().cancelStrategy("Aborted after advancing the lap");
+        expectFailure(IllegalStateException.class, car::completeLap);
+        expectFailure(IllegalStateException.class, car::startNextLap);
+        context.strategy().cancelStrategy("Aborted after rejected manual lap changes");
         check(car.getCurrentEnergyMJ() == 3 && car.getDeployedThisLapMJ() == 0
                 && car.getRecoveredThisLapMJ() == 0 && car.getCurrentLapNumber() == 0
                 && !car.isLapCompleted() && !car.isSessionActive(),
-                "Cancellation must not apply an unused energy plan, even after the lap changes.");
+                "Cancellation must not apply an unused energy plan, after rejected lap changes.");
     }
 
     private static void verifyOtherPlan() {
@@ -68,17 +68,17 @@ public final class RaceStrategyCancellationIsolationVerification {
         check(second.strategy().markComplete(), "Another car's parts must remain reserved until completion.");
     }
 
-    private static void verifyCancellationAfterFailedCompletion() {
+    private static void verifyCancellationAfterRejectedActions() {
         Context context = fixture(null, true, 0);
         context.strategy().markReady();
         context.strategy().startStrategy();
         HybridRaceCar car = (HybridRaceCar) context.car();
-        car.deployEnergyBoost(3);
-        expectFailure(IllegalStateException.class, context.strategy()::markComplete);
-        context.strategy().cancelStrategy("Energy plan no longer achievable");
+        expectFailure(IllegalStateException.class, () -> car.deployEnergyBoost(3));
+        expectFailure(IllegalStateException.class, car::completeLap);
+        context.strategy().cancelStrategy("Manual energy and lap changes rejected");
         check(context.strategy().getStatus() == StrategyStatus.CANCELLED && !car.isSessionActive()
-                && car.getCurrentEnergyMJ() == 0 && car.getTotalMileage() == 0,
-                "An invalid completion plan must still allow cancellation without restoring energy.");
-        check(context.team().consumeParts("TIRES", 3), "Failed completion followed by cancellation must free stock.");
+                && car.getCurrentEnergyMJ() == 3 && car.getTotalMileage() == 0,
+                "Rejected manual actions must still allow cancellation without spending energy.");
+        check(context.team().consumeParts("TIRES", 3), "Rejected actions followed by cancellation must free stock.");
     }
 }
