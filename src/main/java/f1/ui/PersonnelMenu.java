@@ -4,6 +4,8 @@ import f1.model.Driver;
 import f1.model.Engineer;
 import f1.model.EngineerSpecialty;
 import f1.model.F1Car;
+import f1.model.HybridRaceCar;
+import f1.model.ClassicRaceCar;
 import f1.model.UserRole;
 import f1.service.PersonnelRegistry;
 import util.AccessContext;
@@ -81,6 +83,9 @@ public final class PersonnelMenu {
         System.out.println("16. Complete Race");
         System.out.println("17. Complete Setup");
         System.out.println("18. Set Current User Role");
+        System.out.println("19. Create Hybrid Car");
+        System.out.println("20. Create Classic Car");
+        System.out.println("21. List Cars");
         System.out.println("EXIT. Quit");
     }
 
@@ -104,6 +109,9 @@ public final class PersonnelMenu {
             case "16" -> completeRace();
             case "17" -> completeSetup();
             case "18" -> setCurrentUserRole();
+            case "19" -> createHybridCar();
+            case "20" -> createClassicCar();
+            case "21" -> listCars();
             default -> System.out.println("Unrecognized choice: " + choice);
         }
     }
@@ -388,11 +396,36 @@ public final class PersonnelMenu {
     }
 
     private void completeRace() {
-        System.out.println("(not wired yet)");
+        try {
+            String driverId = input.readText("Driver ID: ");
+            if ("EXIT".equals(driverId)) return;
+            Driver driver = registry.findDriverById(driverId);
+            if (driver == null) {
+                System.out.println("Driver not found.");
+                return;
+            }
+            int position = input.readInt("Finishing position (1-20): ");
+            System.out.println("Race completion requires a Circuit (not available in personnel menu).");
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void completeSetup() {
-        System.out.println("(not wired yet)");
+        try {
+            String employeeId = input.readText("Engineer Employee ID: ");
+            if ("EXIT".equals(employeeId)) return;
+            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
+            if (engineer == null) {
+                System.out.println("Engineer not found.");
+                return;
+            }
+            System.out.println("Setup completion requires a RaceStrategy (not available in personnel menu).");
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void setCurrentUserRole() {
@@ -408,6 +441,66 @@ public final class PersonnelMenu {
             currentUser = new AccessContext(role, actorId);
             System.out.println("Current user set to: " + role + (actorId.isEmpty() ? "" : " (" + actorId + ")"));
         } catch (ConsoleInput.ExitRequestedException e) {
+        }
+    }
+
+    private void createHybridCar() {
+        try {
+            String chassisId = input.readText("Chassis ID: ");
+            if ("EXIT".equals(chassisId)) return;
+            if (findCarByChassisId(chassisId) != null) {
+                System.out.println("Chassis ID already exists.");
+                return;
+            }
+            String teamName = input.readText("Team name: ");
+            if ("EXIT".equals(teamName)) return;
+            String model = input.readText("Model: ");
+            if ("EXIT".equals(model)) return;
+            int year = input.readInt("Year: ");
+            double batteryCapacity = input.readInt("Battery capacity (MJ): ");
+            double currentEnergy = input.readInt("Current energy (MJ): ");
+            HybridRaceCar car = new HybridRaceCar(chassisId, teamName, model, year, batteryCapacity, currentEnergy);
+            cars.add(car);
+            System.out.println("Created hybrid car: " + car.getChassisId());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private void createClassicCar() {
+        try {
+            String chassisId = input.readText("Chassis ID: ");
+            if ("EXIT".equals(chassisId)) return;
+            if (findCarByChassisId(chassisId) != null) {
+                System.out.println("Chassis ID already exists.");
+                return;
+            }
+            String teamName = input.readText("Team name: ");
+            if ("EXIT".equals(teamName)) return;
+            String model = input.readText("Model: ");
+            if ("EXIT".equals(model)) return;
+            int year = input.readInt("Year: ");
+            int originalityScore = input.readInt("Originality score (0-100): ");
+            int restorationYear = input.readInt("Restoration year: ");
+            double powerLimit = input.readInt("Power limit (kW): ");
+            ClassicRaceCar car = new ClassicRaceCar(chassisId, teamName, model, year, originalityScore, restorationYear, powerLimit);
+            cars.add(car);
+            System.out.println("Created classic car: " + car.getChassisId());
+        } catch (ConsoleInput.ExitRequestedException e) {
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private void listCars() {
+        if (cars.isEmpty()) {
+            System.out.println("No cars available.");
+            return;
+        }
+        System.out.println("Available cars:");
+        for (F1Car car : cars) {
+            System.out.println("  " + car.getChassisId() + " (" + car.getClass().getSimpleName() + ") - " + car.getTeamName() + " " + car.getModel() + " " + car.getYear());
         }
     }
 
