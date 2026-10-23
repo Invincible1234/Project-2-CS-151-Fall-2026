@@ -163,6 +163,31 @@ public final class Team {
         strategyReservations.remove(strategy);
     }
 
+    void validateReservedParts(RaceStrategy strategy) {
+        Map<String, Integer> reserved = strategyReservations.get(strategy);
+        if (reserved == null || !reserved.equals(strategy.getRequiredParts())) {
+            throw new IllegalStateException("Strategy must hold its required parts reservation.");
+        }
+        for (Map.Entry<String, Integer> part : reserved.entrySet()) {
+            if (partsInventory.getOrDefault(part.getKey(), 0) < part.getValue()) {
+                throw new InsufficientResourcesException("Reserved strategy parts are missing from inventory.");
+            }
+        }
+    }
+
+    void consumeReservedParts(RaceStrategy strategy) {
+        validateReservedParts(strategy);
+        for (Map.Entry<String, Integer> part : strategyReservations.get(strategy).entrySet()) {
+            int remaining = partsInventory.get(part.getKey()) - part.getValue();
+            if (remaining == 0) {
+                partsInventory.remove(part.getKey());
+            } else {
+                partsInventory.put(part.getKey(), remaining);
+            }
+        }
+        releaseStrategyResources(strategy);
+    }
+
     private int availableParts(String partType) {
         int available = partsInventory.getOrDefault(partType, 0);
         for (Map<String, Integer> reserved : strategyReservations.values()) {
