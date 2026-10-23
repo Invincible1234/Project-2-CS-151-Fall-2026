@@ -9,12 +9,11 @@ import static test.StrategyCompletionFixture.check;
 import static test.StrategyCompletionFixture.checks;
 import static test.StrategyCompletionFixture.expectFailure;
 import static test.StrategyCompletionFixture.fixture;
-import static test.StrategyCompletionFixture.strategy;
 
 public final class RaceStrategyCompletionFailureVerification {
     public static void main(String[] args) {
         verifyRejectedCompletion();
-        verifyMileageFailure();
+        verifyMileageGuard();
         verifyManualEnergy();
         System.out.println("PASS: RaceStrategyCompletionFailureVerification (" + checks + " checks)");
     }
@@ -24,37 +23,35 @@ public final class RaceStrategyCompletionFailureVerification {
         context.strategy().markReady();
         context.strategy().startStrategy();
         HybridRaceCar hybrid = (HybridRaceCar) context.car();
-        hybrid.deployEnergyBoost(3);
+        expectFailure(IllegalStateException.class, () -> hybrid.deployEnergyBoost(3));
         Map<String, Integer> stock = context.team().getPartsInventory(UserRole.ENGINEER);
-        expectFailure(IllegalStateException.class, context.strategy()::markComplete);
         check(context.strategy().getStatus() == StrategyStatus.ACTIVE && context.car().isSessionActive()
                 && context.car().getActiveStrategy() == context.strategy() && context.car().getTotalMileage() == 0
-                && hybrid.getCurrentEnergyMJ() == 0 && !context.engineer().isAvailable()
+                && hybrid.getCurrentEnergyMJ() == 3 && !context.engineer().isAvailable()
                 && context.team().getPartsInventory(UserRole.ENGINEER).equals(stock),
-                "Rejected energy completion must preserve mileage, stock, assignments, and the active commitment.");
-        check(context.team().consumeParts("TIRES", 2), "Rejected completion must preserve its reservation.");
+                "Rejected energy deployment must preserve mileage, stock, assignments, and the active commitment.");
+        check(context.team().consumeParts("TIRES", 2), "Rejected deployment must preserve its reservation.");
         expectFailure(exception.InsufficientResourcesException.class,
                 () -> context.team().consumeParts("TIRES", 1));
         Context completedLap = fixture(null, true, 0);
         completedLap.strategy().markReady();
         completedLap.strategy().startStrategy();
-        ((HybridRaceCar) completedLap.car()).completeLap();
-        expectFailure(IllegalStateException.class, completedLap.strategy()::markComplete);
+        expectFailure(IllegalStateException.class, ((HybridRaceCar) completedLap.car())::completeLap);
         check(completedLap.car().isSessionActive() && completedLap.car().getTotalMileage() == 0,
-                "A finished lap with unapplied energy must not silently apply more energy.");
+                "Manual lap completion must not bypass the managed strategy.");
     }
 
-    private static void verifyMileageFailure() {
+    private static void verifyMileageGuard() {
         Context context = fixture(null, true, 0);
         context.strategy().markReady();
         context.strategy().startStrategy();
-        context.car().updateMileage(Double.MAX_VALUE);
+        expectFailure(IllegalStateException.class, () -> context.car().updateMileage(Double.MAX_VALUE));
         HybridRaceCar hybrid = (HybridRaceCar) context.car();
-        expectFailure(IllegalArgumentException.class, context.strategy()::markComplete);
         check(hybrid.getCurrentEnergyMJ() == 3 && hybrid.getDeployedThisLapMJ() == 0
+                && context.car().getTotalMileage() == 0
                 && context.strategy().getStatus() == StrategyStatus.ACTIVE && !context.engineer().isAvailable()
                 && context.team().getPartsInventory(UserRole.ENGINEER).get("TIRES") == 3,
-                "Invalid mileage must be rejected before energy, stock, or crew changes.");
+                "Manual mileage must be rejected before energy, stock, or crew changes.");
     }
 
     private static void verifyManualEnergy() {
@@ -73,18 +70,19 @@ public final class RaceStrategyCompletionFailureVerification {
         HybridRaceCar finishedCar = (HybridRaceCar) finished.car();
         finishedCar.deployEnergyBoost(2);
         finishedCar.chargeBatteryFromRecovery(1);
-        finishedCar.completeLap();
+        expectFailure(IllegalStateException.class, finishedCar::completeLap);
         check(finished.strategy().markComplete() && finishedCar.getCurrentEnergyMJ() == 2,
-                "A manually finished lap must complete when its energy plan is already satisfied.");
+                "A strategy must complete without counting its manually applied energy twice.");
         Context nextLap = fixture(null, true, 0);
         nextLap.strategy().markReady();
         nextLap.strategy().startStrategy();
         HybridRaceCar nextCar = (HybridRaceCar) nextLap.car();
-        nextCar.completeLap();
-        nextCar.startNextLap();
-        expectFailure(IllegalStateException.class, nextLap.strategy()::markComplete);
-        check(nextCar.getCurrentLapNumber() == 2 && nextLap.car().getTotalMileage() == 0,
-                "A single-lap strategy must not silently complete a different lap.");
+        expectFailure(IllegalStateException.class, nextCar::completeLap);
+        expectFailure(IllegalStateException.class, nextCar::startNextLap);
+        check(nextCar.getCurrentLapNumber() == 1 && nextLap.car().getTotalMileage() == 0,
+                "A single-lap strategy must reject advancing to a different lap.");
+        nextLap.strategy().markComplete();
+        check(nextLap.car().getTotalMileage() == 5, "Rejected lap changes must leave completion usable.");
     }
 
 }
