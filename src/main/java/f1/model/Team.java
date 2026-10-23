@@ -5,6 +5,7 @@ import exception.DuplicateEntityException;
 import exception.InsufficientResourcesException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import model.StrategyStatus;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -23,6 +24,7 @@ public final class Team {
     private int championshipPoints;
     private final Map<String, Integer> partsInventory;
     private final Map<RaceStrategy, Map<String, Integer>> strategyReservations = new HashMap<>();
+    private final Map<RaceStrategy, RaceResult> strategyResults = new HashMap<>();
     private final List<RaceResult> raceResults;
     private final List<RaceStrategy> strategies;
 
@@ -297,6 +299,10 @@ public final class Team {
     }
 
     public void recordRaceResult(RaceResult result) {
+        recordRaceResult(result, null);
+    }
+
+    public void recordRaceResult(RaceResult result, RaceStrategy completedStrategy) {
         if (result == null || !result.isValidResult()) {
             throw new IllegalArgumentException("A valid race result is required.");
         }
@@ -333,6 +339,24 @@ public final class Team {
         if (resultDriver == null) {
             throw new IllegalArgumentException("Result driver must be registered with this team.");
         }
+        RaceStrategy source = completedStrategy;
+        if (source == null) {
+            for (RaceStrategy candidate : strategies) {
+                if (matchesCompletedEntry(candidate, result, resultDriver)
+                        && !strategyResults.containsKey(candidate)) {
+                    if (source != null) {
+                        throw new IllegalStateException("Specify which completed strategy produced this result.");
+                    }
+                    source = candidate;
+                }
+            }
+        }
+        if (source == null || !matchesCompletedEntry(source, result, resultDriver)) {
+            throw new IllegalStateException("Result must match a completed strategy registered with this team.");
+        }
+        if (strategyResults.containsKey(source)) {
+            throw new DuplicateEntityException("This completed strategy already has a result.");
+        }
         int points = result.getPointsEarned();
         if (result.getFinishingPosition() < 1 || points < 0) {
             throw new IllegalArgumentException("Result position must be positive and points nonnegative.");
@@ -344,7 +368,18 @@ public final class Team {
         Driver registeredDriver = resultDriver;
         result.bindPointsAccount(delta -> adjustResultPoints(result, registeredDriver, delta));
         raceResults.add(result);
+        strategyResults.put(source, result);
         result.applyPointsToDriverAndTeam();
+    }
+
+    private boolean matchesCompletedEntry(RaceStrategy strategy, RaceResult result, Driver driver) {
+        return strategy.getRegisteredTeam() == this
+                && strategies.stream().anyMatch(candidate -> candidate == strategy)
+                && cars.stream().anyMatch(candidate -> candidate == strategy.getCar())
+                && strategy.getStatus() == StrategyStatus.COMPLETED
+                && strategy.getRaceDriver() == driver
+                && strategy.getChassisId().equals(result.getChassisId())
+                && strategy.getCircuit().getCircuitId().equals(result.getCircuitId());
     }
 
     private void adjustResultPoints(RaceResult result, Driver driver, int delta) {
