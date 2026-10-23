@@ -8,18 +8,39 @@ import util.AccessContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
+import java.io.InputStreamReader;
+import f1.model.Team;
 
 public final class PersonnelMenu {
     private final PersonnelRegistry registry;
     private final ConsoleInput input;
     private AccessContext currentUser;
+    private Team team;
     private final List<F1Car> cars = new ArrayList<>();
 
     public PersonnelMenu(PersonnelRegistry registry, ConsoleInput input) {
         this.registry = registry;
         this.input = input;
         this.currentUser = new AccessContext(UserRole.VIEWER, "");
+    }
+
+    public PersonnelMenu(Team team, ConsoleInput input) {
+        this(new PersonnelRegistry(team), input);
+        this.team = team;
+        cars.addAll(team.getCars());
+    }
+
+    public UserRole open(UserRole role) {
+        currentUser = new AccessContext(role, "");
+        printMenu();
+        int action = input.integer("Personnel action (0 Back)", 0, 18);
+        if (action != 0) {
+            handleChoice(Integer.toString(action));
+        }
+        if (input.isExitRequested()) {
+            throw new ConsoleInput.ExitRequestedException();
+        }
+        return currentUser.getRole();
     }
 
     private F1Car findCarByChassisId(String chassisId) {
@@ -44,7 +65,7 @@ public final class PersonnelMenu {
             printMenu();
             try {
                 String choice = input.readText("Select option: ");
-                if ("EXIT".equals(choice)) {
+                if ("EXIT".equals(choice) || "0".equals(choice)) {
                     System.out.println("Exiting...");
                     break;
                 }
@@ -79,7 +100,7 @@ public final class PersonnelMenu {
         System.out.println("16. Complete Race");
         System.out.println("17. Complete Setup");
         System.out.println("18. Set Current User Role");
-        System.out.println("EXIT. Quit");
+        System.out.println("0. Back | EXIT. Quit");
     }
 
     private void handleChoice(String choice) {
@@ -280,11 +301,7 @@ public final class PersonnelMenu {
     }
 
     public static void main(String[] args) {
-        try (Scanner scanner = new Scanner(System.in)) {
-            PersonnelRegistry registry = new PersonnelRegistry();
-            ConsoleInput input = new ConsoleInput(scanner);
-            PersonnelMenu menu = new PersonnelMenu(registry, input);
-            menu.run();
-        }
+        ConsoleInput input = new ConsoleInput(new InputStreamReader(System.in), System.out);
+        new PersonnelMenu(new PersonnelRegistry(), input).run();
     }
 }
