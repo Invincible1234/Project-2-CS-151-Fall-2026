@@ -54,53 +54,53 @@ public final class PersonnelMenu {
 
     private void ensureCarsAvailable() {
         if (cars.isEmpty()) {
-            System.out.println("No cars available. Create a car first.");
+            input.show("No cars available. Create a car first.");
             throw new IllegalStateException("No cars available");
         }
     }
 
     public void run() {
-        System.out.println("=== F1 Team Personnel Management ===");
+        input.show("=== F1 Team Personnel Management ===");
         while (true) {
             printMenu();
             try {
                 String choice = input.readText("Select option: ");
                 if ("EXIT".equals(choice) || "0".equals(choice)) {
-                    System.out.println("Exiting...");
+                    input.show("Exiting...");
                     break;
                 }
                 handleChoice(choice);
             } catch (ConsoleInput.ExitRequestedException e) {
-                System.out.println("Exiting...");
+                input.show("Exiting...");
                 break;
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                input.show("Error: " + e.getMessage());
             }
-            System.out.println();
+            input.show("");
         }
     }
 
     private void printMenu() {
-        System.out.println("\n--- Personnel Menu ---");
-        System.out.println("1. Register Driver");
-        System.out.println("2. Update Medical Clearance");
-        System.out.println("3. Apply Ban");
-        System.out.println("4. Clear Ban");
-        System.out.println("5. Register Engineer");
-        System.out.println("6. Assign Driver to Car");
-        System.out.println("7. Assign Engineer to Car");
-        System.out.println("8. Release Engineer");
-        System.out.println("9. Remove Driver");
-        System.out.println("10. Remove Engineer");
-        System.out.println("11. Request Car Setup");
-        System.out.println("12. Update Driver Contact");
-        System.out.println("13. Update Engineer Contact");
-        System.out.println("14. Update Engineer Specialty");
-        System.out.println("15. Request Parts");
-        System.out.println("16. Complete Race");
-        System.out.println("17. Complete Setup");
-        System.out.println("18. Set Current User Role");
-        System.out.println("0. Back | EXIT. Quit");
+        input.show("\n--- Personnel Menu ---");
+        input.show("1. Register Driver");
+        input.show("2. Update Medical Clearance");
+        input.show("3. Apply Ban");
+        input.show("4. Clear Ban");
+        input.show("5. Register Engineer");
+        input.show("6. Assign Driver to Car");
+        input.show("7. Assign Engineer to Car");
+        input.show("8. Release Engineer");
+        input.show("9. Remove Driver");
+        input.show("10. Remove Engineer");
+        input.show("11. Request Car Setup");
+        input.show("12. Update Driver Contact");
+        input.show("13. Update Engineer Contact");
+        input.show("14. Update Engineer Specialty");
+        input.show("15. Request Parts");
+        input.show("16. Complete Race");
+        input.show("17. Complete Setup");
+        input.show("18. Set Current User Role");
+        input.show("0. Back | EXIT. Quit");
     }
 
     private void handleChoice(String choice) {
@@ -123,7 +123,7 @@ public final class PersonnelMenu {
             case "16" -> completeRace();
             case "17" -> completeSetup();
             case "18" -> setCurrentUserRole();
-            default -> System.out.println("Unrecognized choice: " + choice);
+            default -> input.show("Unrecognized choice: " + choice);
         }
     }
 
@@ -139,7 +139,7 @@ public final class PersonnelMenu {
             String phone = input.readText("Phone: ");
             if ("EXIT".equals(phone)) return;
             Driver driver = registry.registerDriver(driverId, name, licenseNumber, age, phone);
-            System.out.println("Registered: " + driver);
+            input.show("Registered: " + driver);
         } catch (ConsoleInput.ExitRequestedException e) {
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
