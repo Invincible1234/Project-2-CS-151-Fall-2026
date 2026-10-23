@@ -3,12 +3,15 @@ package f1.model;
 import exception.InvalidStrategyException;
 import exception.RegulatoryViolationException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import model.StrategyStatus;
 import model.TireCompound;
 import model.WeatherCondition;
 import util.InstanceLimit;
+import util.PartsCatalog;
 import util.Validation;
 
 public final class RaceStrategy {
@@ -26,6 +29,7 @@ public final class RaceStrategy {
     private String energyDeploymentPlan;
     private HybridEnergyPlan hybridEnergyPlan;
     private final List<String> partsUsed;
+    private final Map<String, Integer> requiredParts = new HashMap<>();
     private WeatherCondition expectedWeather;
     private String cancellationReason;
 
@@ -130,6 +134,50 @@ public final class RaceStrategy {
         return List.copyOf(partsUsed);
     }
 
+    public Map<String, Integer> getRequiredParts() {
+        return Map.copyOf(requiredParts);
+    }
+
+    public void addRequiredParts(String partType, int quantity) {
+        requireEditableDraft();
+        String part = PartsCatalog.normalizePartType(partType);
+        int current = requiredParts.getOrDefault(part, 0);
+        if (quantity <= 0 || quantity > Integer.MAX_VALUE - current) {
+            throw new IllegalArgumentException("Required part quantity must be positive and fit the supported range.");
+        }
+        requiredParts.put(part, current + quantity);
+        if (current == 0) {
+            partsUsed.add(part);
+        }
+    }
+
+    public boolean markReady() {
+        requireEditableDraft();
+        double estimate = validateReadiness();
+        estimatedLapTimeDelta = estimate;
+        lapTimeEstimateFinalized = true;
+        status = StrategyStatus.READY;
+        return true;
+    }
+
+    public boolean startStrategy() {
+        if (status != StrategyStatus.READY) {
+            throw new InvalidStrategyException("Only a ready strategy can start.");
+        }
+        double estimate = validateReadiness();
+        registeredTeam.reserveStrategyResources(this, requiredParts, car.getAssignedDriver());
+        try {
+            car.beginStrategySession(this);
+        } catch (RuntimeException error) {
+            registeredTeam.releaseStrategyResources(this);
+            throw error;
+        }
+        estimatedLapTimeDelta = estimate;
+        lapTimeEstimateFinalized = true;
+        status = StrategyStatus.ACTIVE;
+        return true;
+    }
+
     public WeatherCondition getExpectedWeather() {
         return expectedWeather;
     }
@@ -181,6 +229,13 @@ public final class RaceStrategy {
         if (circuit == null || circuit != this.circuit) {
             throw new IllegalArgumentException("Use the circuit linked to this strategy.");
         }
+        double delta = calculateLapTimeImpact();
+        estimatedLapTimeDelta = delta;
+        lapTimeEstimateFinalized = true;
+        return delta;
+    }
+
+    private double calculateLapTimeImpact() {
         requireCompatibleTires(tireCompound, expectedWeather);
         double baseline = circuit.estimateBaseLapTime();
         if (!Double.isFinite(baseline) || baseline <= 0) {
@@ -206,9 +261,42 @@ public final class RaceStrategy {
                 || !Double.isFinite(projectedLapTime) || projectedLapTime <= 0) {
             throw new InvalidStrategyException("Estimated lap time must be finite and positive.");
         }
-        estimatedLapTimeDelta = delta;
-        lapTimeEstimateFinalized = true;
         return delta;
+    }
+
+    private double validateReadiness() {
+        if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam) {
+            throw new InvalidStrategyException("Register the strategy and its car with the same team.");
+        }
+        if (!car.isAvailableForRace() || car.getPreparedSessionType() != SessionType.RACE
+                || car.hasScheduledStrategy()) {
+            throw new InvalidStrategyException("Prepare an available, uncommitted car for a race.");
+        }
+        Driver driver = car.getAssignedDriver();
+        if (driver == null || !driver.isEligibleForAssignment()
+                || !driver.getAssignedChassisIds().contains(chassisId)) {
+            throw new InvalidStrategyException("An eligible driver must be assigned to this car.");
+        }
+        driver.requireReleasableAssignments();
+        if (car.getAssignedEngineer() != engineer || engineer.isAvailable()
+                || !chassisId.equals(engineer.getAssignedChassisId()) || !engineer.isQualifiedFor(car)) {
+            throw new InvalidStrategyException("A qualified engineer must be assigned to this car.");
+        }
+        if (expectedWeather != circuit.getTypicalWeather()) {
+            throw new InvalidStrategyException("Update the strategy for the circuit's current weather.");
+        }
+        if (!lapTimeEstimateFinalized || requiredParts.getOrDefault("TIRES", 0) < 1) {
+            throw new InvalidStrategyException("Finalize the lap estimate and add required tires before readiness.");
+        }
+        if (car instanceof HybridRaceCar hybrid) {
+            if (hybridEnergyPlan == null) {
+                throw new InvalidStrategyException("A hybrid strategy requires a validated energy plan.");
+            }
+            validateEnergyPlan(hybridEnergyPlan, hybrid);
+        }
+        double estimate = calculateLapTimeImpact();
+        registeredTeam.validateStrategyResources(this, requiredParts, driver);
+        return estimate;
     }
 
     public String getCancellationReason() {
