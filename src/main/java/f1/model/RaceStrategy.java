@@ -22,6 +22,7 @@ public final class RaceStrategy {
     private final Engineer engineer;
     private final Circuit circuit;
     private Team registeredTeam;
+    private Driver raceDriver;
     private StrategyStatus status;
     private double estimatedLapTimeDelta;
     private boolean lapTimeEstimateFinalized;
@@ -75,6 +76,10 @@ public final class RaceStrategy {
 
     public Engineer getEngineer() {
         return engineer;
+    }
+
+    public Driver getRaceDriver() {
+        return raceDriver;
     }
 
     public Circuit getCircuit() {
@@ -174,6 +179,7 @@ public final class RaceStrategy {
         }
         estimatedLapTimeDelta = estimate;
         lapTimeEstimateFinalized = true;
+        raceDriver = car.getAssignedDriver();
         status = StrategyStatus.ACTIVE;
         return true;
     }
@@ -186,7 +192,7 @@ public final class RaceStrategy {
         car.validateStrategyCompletion(this, distanceKm);
         Driver driver = car.getAssignedDriver();
         if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam
-                || driver == null || !driver.getAssignedChassisIds().contains(chassisId)
+                || driver == null || driver != raceDriver || !driver.getAssignedChassisIds().contains(chassisId)
                 || car.getAssignedEngineer() != engineer
                 || !chassisId.equals(engineer.getAssignedChassisId())) {
             throw new InvalidStrategyException("Repair strategy ownership and assignments before completion.");

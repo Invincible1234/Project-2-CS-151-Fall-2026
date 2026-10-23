@@ -52,6 +52,10 @@ public class HybridRaceCar extends F1Car {
             throw new IllegalArgumentException("Deployment energy must be finite and positive.");
         }
         requireActiveLap();
+        if (getActiveStrategy() != null
+                && energyMJ > getActiveStrategy().getPlannedDeploymentMj() - deployedThisLapMJ) {
+            throw new IllegalStateException("Deployment cannot exceed the active strategy plan.");
+        }
         if (energyMJ > currentEnergyMJ) {
             throw new IllegalArgumentException("Not enough battery energy for this boost.");
         }
@@ -68,6 +72,10 @@ public class HybridRaceCar extends F1Car {
             throw new IllegalArgumentException("Recovered energy must be finite and positive.");
         }
         requireActiveLap();
+        if (getActiveStrategy() != null
+                && energyMJ > getActiveStrategy().getPlannedRecoveryMj() - recoveredThisLapMJ) {
+            throw new IllegalStateException("Recovery cannot exceed the active strategy plan.");
+        }
         double updatedEnergyMJ = currentEnergyMJ + energyMJ;
         if (!Double.isFinite(updatedEnergyMJ) || updatedEnergyMJ > batteryCapacityMJ) {
             throw new IllegalArgumentException("Recovered energy would exceed battery capacity.");
@@ -96,11 +104,13 @@ public class HybridRaceCar extends F1Car {
     }
 
     public void completeLap() {
+        requireUnmanagedLap();
         requireActiveLap();
         lapCompleted = true;
     }
 
     public void startNextLap() {
+        requireUnmanagedLap();
         if (!isSessionActive() || !lapCompleted) {
             throw new IllegalStateException("Complete the current lap before starting another.");
         }
@@ -110,6 +120,12 @@ public class HybridRaceCar extends F1Car {
         clearLapCounters();
         currentLapNumber++;
         lapCompleted = false;
+    }
+
+    private void requireUnmanagedLap() {
+        if (getActiveStrategy() != null) {
+            throw new IllegalStateException("Complete the strategy through its managed lap workflow.");
+        }
     }
 
     @Override

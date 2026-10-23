@@ -16,6 +16,35 @@ public final class ConsoleInput {
         this.output = java.util.Objects.requireNonNull(output);
     }
 
+    public ConsoleInput(Scanner scanner) {
+        this.scanner = java.util.Objects.requireNonNull(scanner, "Scanner is required.");
+        this.output = System.out;
+    }
+
+    public String readText(String prompt) {
+        try {
+            return text(prompt);
+        } catch (Exit exit) {
+            return "EXIT";
+        }
+    }
+
+    public int readInt(String prompt) {
+        return integer(prompt, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
+
+    public <E extends Enum<E>> E readEnum(String prompt, Class<E> type) {
+        return choice(prompt, type);
+    }
+
+    public boolean readYesNo(String prompt) {
+        return read(prompt + " (yes/no)", value -> switch (value.toLowerCase(Locale.ROOT)) {
+            case "yes", "y" -> true;
+            case "no", "n" -> false;
+            default -> throw new IllegalArgumentException("Enter yes or no.");
+        });
+    }
+
     public void show(Object message) {
         output.println(message);
     }
@@ -89,7 +118,11 @@ public final class ConsoleInput {
                 .orElseThrow(() -> new IllegalArgumentException("Choose one of the listed IDs.")));
     }
 
-    static final class Exit extends RuntimeException {
+    public static class ExitRequestedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
+
+    static final class Exit extends ExitRequestedException {
         private static final long serialVersionUID = 1L;
     }
 }
