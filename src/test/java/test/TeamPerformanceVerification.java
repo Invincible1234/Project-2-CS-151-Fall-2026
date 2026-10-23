@@ -48,7 +48,7 @@ public final class TeamPerformanceVerification {
         Driver alpha = new Driver(" ALPHA ", "Driver A", "LICENSE-A", 25, "5551234567");
         team.addDriver(zed);
         team.addDriver(alpha);
-        team.addEngineer(new Engineer("ENGINEER", "Engineer", "HYBRID_POWER_UNIT", 5, "5551234567"));
+        team.addEngineer(new Engineer("ENGINEER", "Engineer", f1.model.EngineerSpecialty.HYBRID_POWER_UNIT, 5, "5551234567"));
         List<Driver> before = team.getDrivers();
         String report = team.generateTeamPerformanceReport();
         check(report.contains("Cars: 2/2") && report.contains("Ready cars: 0")

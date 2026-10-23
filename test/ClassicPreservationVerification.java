@@ -83,7 +83,7 @@ public class ClassicPreservationVerification {
         Driver driver = new Driver("D1", "Driver", "LICENSE", 30, "5551234567");
         driver.setMedicalClearance(true, "Cleared");
         driver.assignToCar(car);
-        Engineer engineer = new Engineer("E1", "Engineer", "CLASSIC_RESTORATION", 5, "5551234567");
+        Engineer engineer = new Engineer("E1", "Engineer", f1.model.EngineerSpecialty.CLASSIC_RESTORATION, 5, "5551234567");
         engineer.assignToCar(car);
         expect(IllegalStateException.class, () -> car.transferOwnershipRecord("Other"));
         car.decommission();

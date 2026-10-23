@@ -118,7 +118,7 @@ public final class RaceStrategyFoundationVerification {
     }
 
     private static Engineer engineer(String id) {
-        return new Engineer(id, "Engineer", "HYBRID_POWER_UNIT", 5, "5551234567");
+        return new Engineer(id, "Engineer", f1.model.EngineerSpecialty.HYBRID_POWER_UNIT, 5, "5551234567");
     }
 
     private static void expectFailure(Class<? extends RuntimeException> expected, Runnable action) {

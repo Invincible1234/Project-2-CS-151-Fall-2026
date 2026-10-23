@@ -1,32 +1,47 @@
 package f1.model;
 
-import java.util.Locale;
+import util.AccessContext;
+import util.AccessPolicy;
+import util.Validation;
 
 public class Engineer {
-    private String employeeId;
-    private String name;
-    private String specialty;
+    private final String employeeId;
+    private final String name;
+    private EngineerSpecialty specialty;
     private boolean isAvailable;
     private String assignedChassisId;
-    private int experienceYears;
+    private final int experienceYears;
     private String phone;
     private F1Car assignedCar;
 
-    public Engineer(String employeeId, String name, String specialty, int experienceYears, String phone) {
-        if (employeeId == null || employeeId.isBlank()) {
-            throw new IllegalArgumentException("Employee ID is required.");
-        }
-        this.employeeId = employeeId.strip();
-        if (specialty == null || specialty.isBlank()) {
+    public Engineer(String employeeId, String name, EngineerSpecialty specialty,
+            int experienceYears, String phone) {
+        this.employeeId = Validation.requireText(employeeId, "Employee ID");
+        this.name = Validation.requireText(name, "Engineer name");
+        if (specialty == null) {
             throw new IllegalArgumentException("Engineer specialty is required.");
         }
-        this.specialty = specialty.strip().toUpperCase(Locale.ROOT);
+        this.specialty = specialty;
+        this.experienceYears = Validation.requireExperienceYears(experienceYears);
+        this.phone = Validation.requirePhone(phone);
         this.isAvailable = true;
         this.assignedChassisId = "";
     }
 
     public String getEmployeeId() {
         return employeeId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public EngineerSpecialty getSpecialty() {
+        return specialty;
+    }
+
+    public int getExperienceYears() {
+        return experienceYears;
     }
 
     public boolean isAvailable() {
@@ -54,14 +69,17 @@ public class Engineer {
         return true;
     }
 
-    public boolean isQualifiedFor(F1Car car) {
-        return car instanceof HybridRaceCar && "HYBRID_POWER_UNIT".equals(specialty)
-                || car instanceof ClassicRaceCar && "CLASSIC_RESTORATION".equals(specialty);
+    public boolean completeSetup(RaceStrategy strategy) {
+        return false;
     }
 
-    public boolean completeSetup(RaceStrategy strategy) { return false; }
-
-    public boolean requestParts(String partType, int quantity) { return false; }
+    public boolean requestParts(String partType, int quantity) {
+        Validation.requireText(partType, "Part type");
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Part quantity must be positive.");
+        }
+        return assignedCar != null;
+    }
 
     public void releaseFromCar() {
         if (assignedCar != null) {
@@ -72,13 +90,54 @@ public class Engineer {
         isAvailable = true;
     }
 
-    public void updateSpecialty(String newSpecialty) { }
+    public void updateSpecialty(EngineerSpecialty newSpecialty) {
+        if (newSpecialty == null) {
+            throw new IllegalArgumentException("Engineer specialty is required.");
+        }
+        if (assignedCar != null) {
+            throw new IllegalStateException("Cannot change the specialty of an assigned engineer.");
+        }
+        this.specialty = newSpecialty;
+    }
 
-    public String getPhone(String role) { return null; }
+    public void updateContact(String newPhone) {
+        this.phone = Validation.requirePhone(newPhone);
+    }
 
-    public String toString() { return ""; }
+    public String phoneFor(AccessContext caller) {
+        return AccessPolicy.visiblePhone(caller, employeeId, phone);
+    }
 
-    public boolean equals(Object other) { return false; }
+    public boolean isQualifiedFor(F1Car car) {
+        if (car instanceof HybridRaceCar hybrid) {
+            if (hybrid.requiresSpecialistEngineer()) {
+                return specialty == EngineerSpecialty.HYBRID_POWER_UNIT;
+            }
+            return specialty != EngineerSpecialty.CLASSIC_RESTORATION;
+        }
+        if (car instanceof ClassicRaceCar) {
+            return specialty == EngineerSpecialty.CLASSIC_RESTORATION
+                    || specialty == EngineerSpecialty.AERODYNAMICS
+                    || specialty == EngineerSpecialty.RACE_ENGINEERING;
+        }
+        return false;
+    }
 
-    public int hashCode() { return 0; }
+    @Override
+    public boolean equals(Object other) {
+        return this == other || other instanceof Engineer engineer
+                && employeeId.equals(engineer.employeeId);
+    }
+
+    @Override
+    public int hashCode() {
+        return employeeId.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "Engineer{employeeId='" + employeeId + "', name='" + name
+                + "', specialty=" + specialty + ", experienceYears=" + experienceYears
+                + ", available=" + isAvailable + ", assignedChassisId='" + assignedChassisId + "'}";
+    }
 }
