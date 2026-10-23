@@ -3,6 +3,7 @@ package f1.ui;
 import exception.CapacityExceededException;
 import exception.DuplicateEntityException;
 import f1.model.Circuit;
+import f1.service.CircuitRegistry;
 import f1.model.Team;
 import f1.model.UserRole;
 import java.util.ArrayList;
@@ -11,7 +12,7 @@ import util.Constants;
 
 public final class ConsoleState {
     private final List<Team> teams = new ArrayList<>();
-    private final List<Circuit> circuits = new ArrayList<>();
+    private final CircuitRegistry circuits = new CircuitRegistry();
     private Team selectedTeam;
     private UserRole role = UserRole.VIEWER;
 
@@ -20,7 +21,7 @@ public final class ConsoleState {
     }
 
     public List<Circuit> getCircuits() {
-        return List.copyOf(circuits);
+        return circuits.getCircuits();
     }
 
     public Team team() {
@@ -50,14 +51,11 @@ public final class ConsoleState {
     }
 
     public void addCircuit(Circuit circuit) {
-        java.util.Objects.requireNonNull(circuit, "Circuit is required.");
-        if (circuits.stream().anyMatch(existing -> existing.getCircuitId().equals(circuit.getCircuitId()))) {
-            throw new DuplicateEntityException("Circuit ID already exists.");
-        }
-        if (circuits.size() >= Constants.MAXIMUM_INSTANCES) {
-            throw new CapacityExceededException("Circuit capacity has been reached.");
-        }
-        circuits.add(circuit);
+        circuits.addCircuit(circuit);
+    }
+
+    public CircuitRegistry getCircuitRegistry() {
+        return circuits;
     }
 
     public UserRole getRole() {
