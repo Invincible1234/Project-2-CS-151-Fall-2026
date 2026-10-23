@@ -70,7 +70,9 @@ public class Engineer {
     }
 
     public boolean completeSetup(RaceStrategy strategy) {
-        return false;
+        return strategy != null
+                && assignedCar != null
+                && assignedChassisId.equals(strategy.getChassisId());
     }
 
     public boolean requestParts(String partType, int quantity) {
