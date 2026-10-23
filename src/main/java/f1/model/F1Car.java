@@ -123,6 +123,9 @@ public abstract class F1Car implements Raceable {
     }
 
     public void updateMileage(double kilometers) {
+        if (activeStrategy != null) {
+            throw new IllegalStateException("Record strategy mileage through strategy completion.");
+        }
         if (!Double.isFinite(kilometers) || kilometers < 0) {
             throw new IllegalArgumentException("Mileage must be finite and nonnegative.");
         }
@@ -323,10 +326,10 @@ public abstract class F1Car implements Raceable {
             throw new IllegalArgumentException(
                     "Choose BALANCED, LOW_DRAG, or HIGH_DOWNFORCE.");
         }
-        if (sessionActive || permanentlyDecommissioned || isDueForMaintenance()
+        if (sessionActive || hasScheduledStrategy() || permanentlyDecommissioned || isDueForMaintenance()
                 || !outOfServiceReason.isEmpty()) {
             throw new IllegalStateException(
-                    "Upgrades require an idle, serviceable car that has not been decommissioned.");
+                    "Upgrades require an idle, serviceable, uncommitted car that has not been decommissioned.");
         }
         currentAeroConfig = configuration;
         raceReady = false;
