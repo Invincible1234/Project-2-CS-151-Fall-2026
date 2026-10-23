@@ -178,6 +178,32 @@ public final class RaceStrategy {
         return true;
     }
 
+    public boolean markComplete() {
+        if (status != StrategyStatus.ACTIVE) {
+            throw new InvalidStrategyException("Only an active strategy can complete.");
+        }
+        double distanceKm = circuit.getLengthKm();
+        car.validateStrategyCompletion(this, distanceKm);
+        Driver driver = car.getAssignedDriver();
+        if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam
+                || driver == null || !driver.getAssignedChassisIds().contains(chassisId)
+                || car.getAssignedEngineer() != engineer
+                || !chassisId.equals(engineer.getAssignedChassisId())) {
+            throw new InvalidStrategyException("Repair strategy ownership and assignments before completion.");
+        }
+        registeredTeam.validateReservedParts(this);
+        if (car instanceof HybridRaceCar hybrid) {
+            hybrid.validateStrategyEnergyCompletion(hybridEnergyPlan);
+            hybrid.finishStrategyEnergy(hybridEnergyPlan);
+        }
+        car.finishStrategySession(this, distanceKm);
+        registeredTeam.consumeReservedParts(this);
+        engineer.releaseFromCar();
+        driver.unassignFromCar(car);
+        status = StrategyStatus.COMPLETED;
+        return true;
+    }
+
     public WeatherCondition getExpectedWeather() {
         return expectedWeather;
     }
