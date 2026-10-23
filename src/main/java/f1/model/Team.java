@@ -22,6 +22,7 @@ public final class Team {
     private double budget;
     private int championshipPoints;
     private final Map<String, Integer> partsInventory;
+    private final Map<RaceStrategy, Map<String, Integer>> strategyReservations = new HashMap<>();
     private final List<RaceResult> raceResults;
     private final List<RaceStrategy> strategies;
 
@@ -108,8 +109,8 @@ public final class Team {
         String part = PartsCatalog.normalizePartType(partType);
         requirePositiveQuantity(quantity);
         int currentQuantity = partsInventory.getOrDefault(part, 0);
-        if (quantity > currentQuantity) {
-            throw new InsufficientResourcesException("Not enough parts in inventory.");
+        if (quantity > availableParts(part)) {
+            throw new InsufficientResourcesException("Not enough unreserved parts in inventory.");
         }
         int remaining = currentQuantity - quantity;
         if (remaining == 0) {
@@ -125,6 +126,49 @@ public final class Team {
             throw new SecurityException("Team principal or engineer access is required.");
         }
         return Map.copyOf(partsInventory);
+    }
+
+    void validateStrategyResources(RaceStrategy strategy, Map<String, Integer> requiredParts, Driver driver) {
+        if (strategy.getRegisteredTeam() != this || strategies.stream().noneMatch(existing -> existing == strategy)
+                || cars.stream().noneMatch(existing -> existing == strategy.getCar())
+                || drivers.stream().noneMatch(existing -> existing == driver)
+                || engineers.stream().noneMatch(existing -> existing == strategy.getEngineer())) {
+            throw new IllegalStateException("Strategy resources must be registered with this team.");
+        }
+        if (!Double.isFinite(budget) || budget < 0) {
+            throw new IllegalStateException("Team budget is invalid.");
+        }
+        if (strategyReservations.containsKey(strategy)) {
+            throw new IllegalStateException("Strategy already holds resource reservations.");
+        }
+        for (RaceStrategy reserved : strategyReservations.keySet()) {
+            if (reserved.getCar() == strategy.getCar() || reserved.getEngineer() == strategy.getEngineer()
+                    || reserved.getCar().getAssignedDriver() == driver) {
+                throw new IllegalStateException("Car or personnel are reserved by another strategy.");
+            }
+        }
+        for (Map.Entry<String, Integer> part : requiredParts.entrySet()) {
+            if (part.getValue() > availableParts(part.getKey())) {
+                throw new InsufficientResourcesException("Not enough unreserved parts for this strategy.");
+            }
+        }
+    }
+
+    void reserveStrategyResources(RaceStrategy strategy, Map<String, Integer> requiredParts, Driver driver) {
+        validateStrategyResources(strategy, requiredParts, driver);
+        strategyReservations.put(strategy, Map.copyOf(requiredParts));
+    }
+
+    void releaseStrategyResources(RaceStrategy strategy) {
+        strategyReservations.remove(strategy);
+    }
+
+    private int availableParts(String partType) {
+        int available = partsInventory.getOrDefault(partType, 0);
+        for (Map<String, Integer> reserved : strategyReservations.values()) {
+            available -= reserved.getOrDefault(partType, 0);
+        }
+        return available;
     }
 
     public boolean addCar(F1Car car) {
