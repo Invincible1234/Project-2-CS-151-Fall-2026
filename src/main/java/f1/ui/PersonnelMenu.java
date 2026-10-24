@@ -47,6 +47,14 @@ public final class PersonnelMenu {
         return currentUser.getRole();
     }
 
+    private PersonnelTeamActions teamActions() {
+        return new PersonnelTeamActions(input, registry, cars);
+    }
+
+    private PersonnelWorkflowActions workflowActions() {
+        return new PersonnelWorkflowActions(input, teamActions(), team);
+    }
+
     private F1Car findCarByChassisId(String chassisId) {
         for (F1Car car : cars) {
             if (car.getChassisId().equals(chassisId)) {
@@ -213,21 +221,7 @@ public final class PersonnelMenu {
     }
 
     private void registerEngineer() {
-        try {
-            String employeeId = input.readText("Employee ID: ");
-            if ("EXIT".equals(employeeId)) return;
-            String name = input.readText("Name: ");
-            if ("EXIT".equals(name)) return;
-            EngineerSpecialty specialty = input.readEnum("Specialty (HYBRID_POWER_UNIT, AERODYNAMICS, RACE_ENGINEERING, CLASSIC_RESTORATION): ", EngineerSpecialty.class);
-            int experienceYears = input.readInt("Experience years: ");
-            String phone = input.readText("Phone: ");
-            if ("EXIT".equals(phone)) return;
-            Engineer engineer = registry.registerEngineer(employeeId, name, specialty, experienceYears, phone);
-            input.show("Registered: " + engineer);
-        } catch (ConsoleInput.ExitRequestedException e) {
-        } catch (Exception e) {
-            input.show("Error: " + e.getMessage());
-        }
+        teamActions().registerEngineer();
     }
 
     private void assignDriverToCar() {
