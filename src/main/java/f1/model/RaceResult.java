@@ -1,10 +1,11 @@
 package f1.model;
 
+import util.InstanceLimit;
+import util.Validation;
+
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import util.InstanceLimit;
-import util.Validation;
 
 public final class RaceResult {
     private static final int[] FINISH_POINTS = {25, 18, 15, 12, 10, 8, 6, 4, 2, 1};
@@ -27,14 +28,34 @@ public final class RaceResult {
         void adjust(int delta);
     }
 
-    public RaceResult(String resultId, String raceId, String chassisId, String driverId,
-            String circuitId, int finishingPosition, String date) {
-        this(resultId, raceId, chassisId, driverId, circuitId, finishingPosition, date,
+    public RaceResult(
+            String resultId,
+            String raceId,
+            String chassisId,
+            String driverId,
+            String circuitId,
+            int finishingPosition,
+            String date) {
+        this(
+                resultId,
+                raceId,
+                chassisId,
+                driverId,
+                circuitId,
+                finishingPosition,
+                date,
                 Clock.systemDefaultZone());
     }
 
-    public RaceResult(String resultId, String raceId, String chassisId, String driverId,
-            String circuitId, int finishingPosition, String date, Clock clock) {
+    public RaceResult(
+            String resultId,
+            String raceId,
+            String chassisId,
+            String driverId,
+            String circuitId,
+            int finishingPosition,
+            String date,
+            Clock clock) {
         this.resultId = Validation.requireText(resultId, "Result ID");
         this.raceId = Validation.requireText(raceId, "Race ID");
         this.chassisId = Validation.requireText(chassisId, "Chassis ID");
@@ -48,7 +69,8 @@ public final class RaceResult {
         try {
             this.date = LocalDate.parse(dateText);
         } catch (DateTimeParseException error) {
-            throw new IllegalArgumentException("Race date must be a valid ISO date such as 2026-10-22.");
+            throw new IllegalArgumentException(
+                    "Race date must be a valid ISO date such as 2026-10-22.");
         }
         if (this.date.isAfter(LocalDate.now(clock))) {
             throw new IllegalArgumentException("A race result cannot be dated in the future.");
@@ -111,7 +133,8 @@ public final class RaceResult {
 
     void bindPointsAccount(PointsAccount account) {
         if (account == null || pointsAccount != null || !isValidResult()) {
-            throw new IllegalStateException("A valid result can only be registered with one points account.");
+            throw new IllegalStateException(
+                    "A valid result can only be registered with one points account.");
         }
         pointsAccount = account;
     }
@@ -119,7 +142,8 @@ public final class RaceResult {
     public void applyPointsToDriverAndTeam() {
         requireRecorded();
         if (pointsAccount == null || pointsApplied) {
-            throw new IllegalStateException("Register this result with its team once before applying points.");
+            throw new IllegalStateException(
+                    "Register this result with its team once before applying points.");
         }
         pointsAccount.adjust(pointsEarned);
         appliedPoints = pointsEarned;
@@ -138,7 +162,8 @@ public final class RaceResult {
         int validatedPosition = Validation.requirePosition(position);
         String validatedReason = Validation.requireText(reason, "Correction reason");
         if (validatedPosition == finishingPosition) {
-            throw new IllegalArgumentException("The correction must change the finishing position.");
+            throw new IllegalArgumentException(
+                    "The correction must change the finishing position.");
         }
         int correctedPoints = pointsFor(validatedPosition);
         reconcilePoints(correctedPoints);
@@ -165,14 +190,30 @@ public final class RaceResult {
     }
 
     public String summarize() {
-        return "Result " + resultId + ": race " + raceId + ", driver " + driverId
-                + ", car " + chassisId + ", circuit " + circuitId + ", date " + date
-                + ", position " + finishingPosition + ", points " + pointsEarned + ", " + status;
+        return "Result "
+                + resultId
+                + ": race "
+                + raceId
+                + ", driver "
+                + driverId
+                + ", car "
+                + chassisId
+                + ", circuit "
+                + circuitId
+                + ", date "
+                + date
+                + ", position "
+                + finishingPosition
+                + ", points "
+                + pointsEarned
+                + ", "
+                + status;
     }
 
     @Override
     public boolean equals(Object other) {
-        return this == other || other instanceof RaceResult result && resultId.equals(result.resultId);
+        return this == other
+                || other instanceof RaceResult result && resultId.equals(result.resultId);
     }
 
     @Override

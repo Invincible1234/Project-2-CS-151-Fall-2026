@@ -4,6 +4,7 @@ import f1.model.Engineer;
 import f1.model.EngineerSpecialty;
 import f1.model.RaceStrategy;
 import f1.model.Team;
+
 import util.Validation;
 
 final class PersonnelWorkflowActions {
@@ -32,17 +33,25 @@ final class PersonnelWorkflowActions {
         Engineer engineer = people.engineer();
         String part = input.read("Requested part type", util.PartsCatalog::normalizePartType);
         int quantity = input.integer("Requested quantity", 1, Integer.MAX_VALUE);
-        input.show(engineer.requestParts(part, quantity)
-                ? "Parts requested; use Inventory and budget to purchase stock."
-                : "Assign the engineer to a car before requesting parts.");
+        input.show(
+                engineer.requestParts(part, quantity)
+                        ? "Parts requested; use Inventory and budget -> Engineer requests to"
+                                + " fulfill them."
+                        : "Assign the engineer to a car before requesting parts.");
     }
 
     void completeSetup() {
         requireTeam();
         Engineer engineer = people.engineer();
-        RaceStrategy strategy = input.select("Strategy (chassis/strategy)", team.getStrategies(),
-                entry -> entry.getChassisId() + "/" + entry.getStrategyId());
-        input.show(engineer.completeSetup(strategy) ? "Setup confirmed." : "Assign this engineer to the strategy car first.");
+        RaceStrategy strategy =
+                input.select(
+                        "Strategy (chassis/strategy)",
+                        team.getStrategies(),
+                        entry -> entry.getChassisId() + "/" + entry.getStrategyId());
+        input.show(
+                engineer.completeSetup(strategy)
+                        ? "Setup confirmed; car prepared for RACE and lap estimate finalized."
+                        : "Assign this engineer to the strategy car first.");
     }
 
     void completeRace() {
@@ -52,7 +61,8 @@ final class PersonnelWorkflowActions {
 
     private void requireTeam() {
         if (team == null) {
-            throw new IllegalStateException("Open Personnel from the main application with a selected team.");
+            throw new IllegalStateException(
+                    "Open Personnel from the main application with a selected team.");
         }
     }
 }

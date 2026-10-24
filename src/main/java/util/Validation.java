@@ -3,8 +3,7 @@ package util;
 public final class Validation {
     private static final String PHONE_PATTERN = "\\+?\\d{10,15}";
 
-    private Validation() {
-    }
+    private Validation() {}
 
     public static String requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {

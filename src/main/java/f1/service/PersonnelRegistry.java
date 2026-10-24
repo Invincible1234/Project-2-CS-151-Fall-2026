@@ -2,14 +2,18 @@ package f1.service;
 
 import exception.CapacityExceededException;
 import exception.DuplicateEntityException;
+
 import f1.model.Driver;
 import f1.model.Engineer;
 import f1.model.EngineerSpecialty;
 import f1.model.Team;
+
+import util.Constants;
+import util.IdentityRegistry;
+import util.Validation;
+
 import java.util.ArrayList;
 import java.util.List;
-import util.Constants;
-import util.Validation;
 
 public final class PersonnelRegistry {
     private final List<Driver> drivers = new ArrayList<>();
@@ -27,11 +31,13 @@ public final class PersonnelRegistry {
         engineers.addAll(team.getEngineers());
     }
 
-    public Driver registerDriver(String driverId, String name, String licenseNumber, int age, String phone) {
+    public Driver registerDriver(
+            String driverId, String name, String licenseNumber, int age, String phone) {
         String id = Validation.requireText(driverId, "Driver ID");
         String license = Validation.requireText(licenseNumber, "License number");
         if (matchDriverByLicense(license) != null) {
-            throw new DuplicateEntityException("A driver with this license number is already registered.");
+            throw new DuplicateEntityException(
+                    "A driver with this license number is already registered.");
         }
         if (matchDriverById(id) != null) {
             throw new DuplicateEntityException("A driver with this id is already registered.");
@@ -40,21 +46,35 @@ public final class PersonnelRegistry {
         Driver driver = new Driver(driverId, name, licenseNumber, age, phone);
         if (team != null) {
             team.addDriver(driver);
+        } else {
+            IdentityRegistry.claim(
+                    this,
+                    driver,
+                    List.of("Driver license", driver.getLicenseNumber()),
+                    List.of("Driver ID", driver.getDriverId()));
         }
         drivers.add(driver);
         return driver;
     }
 
-    public Engineer registerEngineer(String employeeId, String name, EngineerSpecialty specialty,
-            int experienceYears, String phone) {
+    public Engineer registerEngineer(
+            String employeeId,
+            String name,
+            EngineerSpecialty specialty,
+            int experienceYears,
+            String phone) {
         String id = Validation.requireText(employeeId, "Employee ID");
         if (matchEngineerById(id) != null) {
-            throw new DuplicateEntityException("An engineer with this employee id is already registered.");
+            throw new DuplicateEntityException(
+                    "An engineer with this employee id is already registered.");
         }
         ensureRoom(engineers, "engineer");
         Engineer engineer = new Engineer(employeeId, name, specialty, experienceYears, phone);
         if (team != null) {
             team.addEngineer(engineer);
+        } else {
+            IdentityRegistry.claim(
+                    this, engineer, List.of("Employee ID", engineer.getEmployeeId()));
         }
         engineers.add(engineer);
         return engineer;
@@ -87,6 +107,7 @@ public final class PersonnelRegistry {
         }
         if (team == null) {
             driver.releaseAllAssignments();
+            IdentityRegistry.release(this, driver);
         } else {
             team.removeDriver(driver);
         }
@@ -100,6 +121,7 @@ public final class PersonnelRegistry {
         }
         if (team == null) {
             engineer.releaseFromCar();
+            IdentityRegistry.release(this, engineer);
         } else {
             team.removeEngineer(engineer);
         }
@@ -109,7 +131,11 @@ public final class PersonnelRegistry {
     private void ensureRoom(List<?> people, String label) {
         if (people.size() >= Constants.MAXIMUM_INSTANCES) {
             throw new CapacityExceededException(
-                    "Cannot register another " + label + ". The limit is " + Constants.MAXIMUM_INSTANCES + ".");
+                    "Cannot register another "
+                            + label
+                            + ". The limit is "
+                            + Constants.MAXIMUM_INSTANCES
+                            + ".");
         }
     }
 

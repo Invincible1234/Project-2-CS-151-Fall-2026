@@ -5,8 +5,7 @@ import f1.model.UserRole;
 public final class AccessPolicy {
     public static final String MASKED_PHONE = "**********";
 
-    private AccessPolicy() {
-    }
+    private AccessPolicy() {}
 
     public static boolean canViewPhone(AccessContext caller, String ownerId) {
         requireContext(caller);

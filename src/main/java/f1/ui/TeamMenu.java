@@ -1,6 +1,7 @@
 package f1.ui;
 
 import f1.model.Team;
+
 import util.Constants;
 
 final class TeamMenu {
@@ -22,20 +23,27 @@ final class TeamMenu {
             }
             case 3 -> input.show(state.team());
             case 4 -> input.show(state.team().generateTeamPerformanceReport());
-            default -> { }
+            default -> {}
         }
     }
 
     private void create() {
-        String id = input.read("New team ID", value -> {
-            if (state.getTeams().stream().anyMatch(team -> team.getTeamId().equals(value))) {
-                throw new IllegalArgumentException("Team ID already exists.");
-            }
-            return value;
-        });
+        String id =
+                input.read(
+                        "New team ID",
+                        value -> {
+                            if (state.getTeams().stream()
+                                    .anyMatch(team -> team.getTeamId().equals(value))) {
+                                throw new IllegalArgumentException("Team ID already exists.");
+                            }
+                            return value;
+                        });
         String name = input.text("Team name");
-        int capacity = input.integer("Car capacity (1-" + Constants.MAXIMUM_INSTANCES + ")", 1,
-                Constants.MAXIMUM_INSTANCES);
+        int capacity =
+                input.integer(
+                        "Car capacity (1-" + Constants.MAXIMUM_INSTANCES + ")",
+                        1,
+                        Constants.MAXIMUM_INSTANCES);
         double budget = input.amount("Starting budget", false);
         state.addTeam(new Team(id, name, capacity, budget));
         input.show("Created and selected team: " + id);

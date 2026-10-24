@@ -3,15 +3,20 @@ package f1.model;
 import exception.CapacityExceededException;
 import exception.DuplicateEntityException;
 import exception.InsufficientResourcesException;
+
+import model.StrategyStatus;
+
+import util.Constants;
+import util.IdentityRegistry;
+import util.InstanceLimit;
+import util.PartsCatalog;
+
 import java.util.ArrayList;
 import java.util.HashMap;
-import model.StrategyStatus;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
-import util.Constants;
-import util.PartsCatalog;
 
 public final class Team {
     private final String teamId;
@@ -46,6 +51,7 @@ public final class Team {
         this.partsInventory = new HashMap<>();
         this.raceResults = new ArrayList<>();
         this.strategies = new ArrayList<>();
+        InstanceLimit.checkAndCount(Team.class);
     }
 
     public String getTeamId() {
@@ -79,7 +85,8 @@ public final class Team {
             throw new IllegalArgumentException("Budget addition exceeds the supported amount.");
         }
         if (updatedBudget <= budget) {
-            throw new IllegalArgumentException("Budget addition is too small for the current balance.");
+            throw new IllegalArgumentException(
+                    "Budget addition is too small for the current balance.");
         }
         budget = updatedBudget;
     }
@@ -89,18 +96,21 @@ public final class Team {
         requirePositiveQuantity(quantity);
         int currentQuantity = partsInventory.getOrDefault(part, 0);
         if (quantity > Integer.MAX_VALUE - currentQuantity) {
-            throw new CapacityExceededException("Part quantity exceeds the supported inventory range.");
+            throw new CapacityExceededException(
+                    "Part quantity exceeds the supported inventory range.");
         }
         double cost = PartsCatalog.getUnitPrice(part) * quantity;
         if (!Double.isFinite(cost) || cost <= 0) {
             throw new IllegalArgumentException("Purchase cost must be finite and positive.");
         }
         if (cost > budget) {
-            throw new InsufficientResourcesException("Not enough budget to purchase the requested parts.");
+            throw new InsufficientResourcesException(
+                    "Not enough budget to purchase the requested parts.");
         }
         double updatedBudget = budget - cost;
         if (updatedBudget >= budget) {
-            throw new IllegalArgumentException("Purchase cost is too small for the current balance.");
+            throw new IllegalArgumentException(
+                    "Purchase cost is too small for the current balance.");
         }
         partsInventory.put(part, currentQuantity + quantity);
         budget = updatedBudget;
@@ -130,12 +140,15 @@ public final class Team {
         return Map.copyOf(partsInventory);
     }
 
-    void validateStrategyResources(RaceStrategy strategy, Map<String, Integer> requiredParts, Driver driver) {
-        if (strategy.getRegisteredTeam() != this || strategies.stream().noneMatch(existing -> existing == strategy)
+    void validateStrategyResources(
+            RaceStrategy strategy, Map<String, Integer> requiredParts, Driver driver) {
+        if (strategy.getRegisteredTeam() != this
+                || strategies.stream().noneMatch(existing -> existing == strategy)
                 || cars.stream().noneMatch(existing -> existing == strategy.getCar())
                 || drivers.stream().noneMatch(existing -> existing == driver)
                 || engineers.stream().noneMatch(existing -> existing == strategy.getEngineer())) {
-            throw new IllegalStateException("Strategy resources must be registered with this team.");
+            throw new IllegalStateException(
+                    "Strategy resources must be registered with this team.");
         }
         if (!Double.isFinite(budget) || budget < 0) {
             throw new IllegalStateException("Team budget is invalid.");
@@ -144,19 +157,23 @@ public final class Team {
             throw new IllegalStateException("Strategy already holds resource reservations.");
         }
         for (RaceStrategy reserved : strategyReservations.keySet()) {
-            if (reserved.getCar() == strategy.getCar() || reserved.getEngineer() == strategy.getEngineer()
+            if (reserved.getCar() == strategy.getCar()
+                    || reserved.getEngineer() == strategy.getEngineer()
                     || reserved.getCar().getAssignedDriver() == driver) {
-                throw new IllegalStateException("Car or personnel are reserved by another strategy.");
+                throw new IllegalStateException(
+                        "Car or personnel are reserved by another strategy.");
             }
         }
         for (Map.Entry<String, Integer> part : requiredParts.entrySet()) {
             if (part.getValue() > availableParts(part.getKey())) {
-                throw new InsufficientResourcesException("Not enough unreserved parts for this strategy.");
+                throw new InsufficientResourcesException(
+                        "Not enough unreserved parts for this strategy.");
             }
         }
     }
 
-    void reserveStrategyResources(RaceStrategy strategy, Map<String, Integer> requiredParts, Driver driver) {
+    void reserveStrategyResources(
+            RaceStrategy strategy, Map<String, Integer> requiredParts, Driver driver) {
         validateStrategyResources(strategy, requiredParts, driver);
         strategyReservations.put(strategy, Map.copyOf(requiredParts));
     }
@@ -172,7 +189,8 @@ public final class Team {
         }
         for (Map.Entry<String, Integer> part : reserved.entrySet()) {
             if (partsInventory.getOrDefault(part.getKey(), 0) < part.getValue()) {
-                throw new InsufficientResourcesException("Reserved strategy parts are missing from inventory.");
+                throw new InsufficientResourcesException(
+                        "Reserved strategy parts are missing from inventory.");
             }
         }
     }
@@ -200,18 +218,35 @@ public final class Team {
 
     public boolean addCar(F1Car car) {
         validateRegistration(cars, car, F1Car::getChassisId, capacity, "Car");
+        if (car.getRegisteredTeam() != null || car.isSessionActive()) {
+            throw new IllegalStateException(
+                    "Register an idle car that does not already belong to a team.");
+        }
+        IdentityRegistry.claim(this, car, List.of("Chassis ID", car.getChassisId()));
         car.changeRegisteredTeam(null, this);
         return cars.add(car);
     }
 
     public boolean addDriver(Driver driver) {
-        return register(drivers, driver, Driver::getLicenseNumber,
-                Constants.MAXIMUM_INSTANCES, "Driver");
+        validateRegistration(
+                drivers, driver, Driver::getLicenseNumber, Constants.MAXIMUM_INSTANCES, "Driver");
+        IdentityRegistry.claim(
+                this,
+                driver,
+                List.of("Driver license", driver.getLicenseNumber()),
+                List.of("Driver ID", driver.getDriverId()));
+        return drivers.add(driver);
     }
 
     public boolean addEngineer(Engineer engineer) {
-        return register(engineers, engineer, Engineer::getEmployeeId,
-                Constants.MAXIMUM_INSTANCES, "Engineer");
+        validateRegistration(
+                engineers,
+                engineer,
+                Engineer::getEmployeeId,
+                Constants.MAXIMUM_INSTANCES,
+                "Engineer");
+        IdentityRegistry.claim(this, engineer, List.of("Employee ID", engineer.getEmployeeId()));
+        return engineers.add(engineer);
     }
 
     public boolean addStrategy(RaceStrategy strategy) {
@@ -231,17 +266,24 @@ public final class Team {
         Engineer engineer = strategy.getEngineer();
         if (findRegistered(cars, car, F1Car::getChassisId, "Car") != car
                 || car.getRegisteredTeam() != this) {
-            throw new IllegalArgumentException("Strategy must reference this team's registered car.");
+            throw new IllegalArgumentException(
+                    "Strategy must reference this team's registered car.");
         }
         if (findRegistered(engineers, engineer, Engineer::getEmployeeId, "Engineer") != engineer) {
-            throw new IllegalArgumentException("Strategy must reference this team's registered engineer.");
+            throw new IllegalArgumentException(
+                    "Strategy must reference this team's registered engineer.");
         }
+        IdentityRegistry.claim(
+                this,
+                strategy,
+                List.of("Strategy", strategy.getChassisId(), strategy.getStrategyId()));
         strategy.registerWithTeam(this);
         return strategies.add(strategy);
     }
 
     public boolean assignDriver(Driver driver, F1Car car) {
-        Driver registeredDriver = findRegistered(drivers, driver, Driver::getLicenseNumber, "Driver");
+        Driver registeredDriver =
+                findRegistered(drivers, driver, Driver::getLicenseNumber, "Driver");
         F1Car registeredCar = findRegistered(cars, car, F1Car::getChassisId, "Car");
         if (registeredDriver == null || registeredCar == null) {
             throw new IllegalArgumentException("Driver and car must be registered with this team.");
@@ -255,11 +297,16 @@ public final class Team {
         if (registered == null) {
             return false;
         }
-        if (registered.isSessionActive() || registered.hasScheduledStrategy() || registered.hasActiveAssignments()
-                || registered instanceof ClassicRaceCar classic && classic.isRestorationInProgress()) {
-            throw new IllegalStateException("Cannot remove a car with active work, assignments, or a strategy.");
+        if (registered.isSessionActive()
+                || registered.hasScheduledStrategy()
+                || registered.hasActiveAssignments()
+                || registered instanceof ClassicRaceCar classic
+                        && classic.isRestorationInProgress()) {
+            throw new IllegalStateException(
+                    "Cannot remove a car with active work, assignments, or a strategy.");
         }
         registered.changeRegisteredTeam(this, null);
+        IdentityRegistry.release(this, registered);
         return cars.removeIf(existing -> existing == registered);
     }
 
@@ -270,12 +317,19 @@ public final class Team {
         if (car == null || findRegistered(cars, car, F1Car::getChassisId, "Car") != car) {
             throw new IllegalArgumentException("The source team must own this exact car.");
         }
-        if (car.isSessionActive() || car.hasScheduledStrategy() || car.hasActiveAssignments()
-                || car.isRestorationInProgress() || car.isPermanentlyDecommissioned()) {
-            throw new IllegalStateException("Resolve car commitments before transferring ownership.");
+        if (car.isSessionActive()
+                || car.hasScheduledStrategy()
+                || car.hasActiveAssignments()
+                || car.isRestorationInProgress()
+                || car.isPermanentlyDecommissioned()) {
+            throw new IllegalStateException(
+                    "Resolve car commitments before transferring ownership.");
         }
-        validateRegistration(destination.cars, car, F1Car::getChassisId, destination.capacity, "Car");
+        validateRegistration(
+                destination.cars, car, F1Car::getChassisId, destination.capacity, "Car");
+        IdentityRegistry.claim(destination, car, List.of("Chassis ID", car.getChassisId()));
         car.changeRegisteredTeam(this, destination);
+        IdentityRegistry.release(this, car);
         cars.removeIf(existing -> existing == car);
         destination.cars.add(car);
     }
@@ -286,15 +340,18 @@ public final class Team {
             return false;
         }
         registered.releaseAllAssignments();
+        IdentityRegistry.release(this, registered);
         return drivers.removeIf(existing -> existing == registered);
     }
 
     public boolean removeEngineer(Engineer engineer) {
-        Engineer registered = findRegistered(engineers, engineer, Engineer::getEmployeeId, "Engineer");
+        Engineer registered =
+                findRegistered(engineers, engineer, Engineer::getEmployeeId, "Engineer");
         if (registered == null) {
             return false;
         }
         registered.releaseFromCar();
+        IdentityRegistry.release(this, registered);
         return engineers.removeIf(existing -> existing == registered);
     }
 
@@ -314,16 +371,18 @@ public final class Team {
         String driverId = requireText(result.getDriverId(), "Result driver ID");
         requireText(result.getCircuitId(), "Result circuit ID");
         for (RaceResult existing : raceResults) {
-            if (resultId.equals(existing.getResultId().strip()) || result.hasSameRaceEntry(existing)
+            if (resultId.equals(existing.getResultId().strip())
+                    || result.hasSameRaceEntry(existing)
                     || result.getRaceId().equals(existing.getRaceId())
-                    && chassisId.equals(existing.getChassisId())) {
+                            && chassisId.equals(existing.getChassisId())) {
                 throw new DuplicateEntityException("This race result has already been recorded.");
             }
         }
         if (raceResults.size() >= Constants.MAXIMUM_INSTANCES) {
             throw new CapacityExceededException("Race result capacity has been reached.");
         }
-        boolean registeredCar = cars.stream().anyMatch(car -> chassisId.equals(car.getChassisId().strip()));
+        boolean registeredCar =
+                cars.stream().anyMatch(car -> chassisId.equals(car.getChassisId().strip()));
         if (!registeredCar) {
             throw new IllegalArgumentException("Result car must be registered with this team.");
         }
@@ -331,7 +390,8 @@ public final class Team {
         for (Driver driver : drivers) {
             if (driverId.equals(driver.getDriverId())) {
                 if (resultDriver != null) {
-                    throw new IllegalArgumentException("Result driver ID is ambiguous within this team.");
+                    throw new IllegalArgumentException(
+                            "Result driver ID is ambiguous within this team.");
                 }
                 resultDriver = driver;
             }
@@ -345,27 +405,32 @@ public final class Team {
                 if (matchesCompletedEntry(candidate, result, resultDriver)
                         && !strategyResults.containsKey(candidate)) {
                     if (source != null) {
-                        throw new IllegalStateException("Specify which completed strategy produced this result.");
+                        throw new IllegalStateException(
+                                "Specify which completed strategy produced this result.");
                     }
                     source = candidate;
                 }
             }
         }
         if (source == null || !matchesCompletedEntry(source, result, resultDriver)) {
-            throw new IllegalStateException("Result must match a completed strategy registered with this team.");
+            throw new IllegalStateException(
+                    "Result must match a completed strategy registered with this team.");
         }
         if (strategyResults.containsKey(source)) {
             throw new DuplicateEntityException("This completed strategy already has a result.");
         }
         int points = result.getPointsEarned();
         if (result.getFinishingPosition() < 1 || points < 0) {
-            throw new IllegalArgumentException("Result position must be positive and points nonnegative.");
+            throw new IllegalArgumentException(
+                    "Result position must be positive and points nonnegative.");
         }
         if (points > Integer.MAX_VALUE - championshipPoints
                 || points > Integer.MAX_VALUE - resultDriver.getChampionshipPoints()) {
-            throw new IllegalStateException("Championship point total exceeds the supported range.");
+            throw new IllegalStateException(
+                    "Championship point total exceeds the supported range.");
         }
         Driver registeredDriver = resultDriver;
+        IdentityRegistry.claim(this, result, List.of("Result ID", result.getResultId()));
         result.bindPointsAccount(delta -> adjustResultPoints(result, registeredDriver, delta));
         raceResults.add(result);
         strategyResults.put(source, result);
@@ -388,9 +453,12 @@ public final class Team {
         }
         long teamTotal = (long) championshipPoints + delta;
         long driverTotal = (long) driver.getChampionshipPoints() + delta;
-        if (teamTotal < 0 || driverTotal < 0
-                || teamTotal > Integer.MAX_VALUE || driverTotal > Integer.MAX_VALUE) {
-            throw new IllegalStateException("Corrected championship points exceed the supported range.");
+        if (teamTotal < 0
+                || driverTotal < 0
+                || teamTotal > Integer.MAX_VALUE
+                || driverTotal > Integer.MAX_VALUE) {
+            throw new IllegalStateException(
+                    "Corrected championship points exceed the supported range.");
         }
         driver.adjustChampionshipPoints(delta);
         championshipPoints = (int) teamTotal;
@@ -413,7 +481,8 @@ public final class Team {
         int podiums = 0;
         int bestFinish = Integer.MAX_VALUE;
         double finishTotal = 0;
-        List<RaceResult> validResults = raceResults.stream().filter(RaceResult::isValidResult).toList();
+        List<RaceResult> validResults =
+                raceResults.stream().filter(RaceResult::isValidResult).toList();
         for (RaceResult result : validResults) {
             int position = result.getFinishingPosition();
             if (position == 1) {
@@ -425,32 +494,74 @@ public final class Team {
             bestFinish = Math.min(bestFinish, position);
             finishTotal += position;
         }
-        String mileage = Double.isFinite(totalMileage) && totalMileage >= 0
-                ? String.format(Locale.ROOT, "%.2f", totalMileage) : "Unavailable";
-        StringBuilder report = new StringBuilder("Team performance: ")
-                .append(name).append(" (").append(teamId).append(")\n")
-                .append("Cars: ").append(cars.size()).append('/').append(capacity).append('\n')
-                .append("Ready cars: ").append(readyCars).append('\n')
-                .append("Decommissioned cars: ").append(decommissionedCars).append('\n')
-                .append("Total mileage (km): ").append(mileage).append('\n')
-                .append("Drivers: ").append(drivers.size()).append('\n')
-                .append("Engineers: ").append(engineers.size()).append('\n')
-                .append("Recorded results: ").append(validResults.size()).append('\n')
-                .append("Championship points: ").append(championshipPoints).append('\n')
-                .append("Wins: ").append(wins).append('\n')
-                .append("Podiums: ").append(podiums).append('\n')
-                .append("Best finish: ").append(validResults.isEmpty() ? "N/A" : bestFinish).append('\n')
-                .append("Average finish: ").append(validResults.isEmpty() ? "N/A"
-                        : String.format(Locale.ROOT, "%.2f", finishTotal / validResults.size()))
-                .append("\nDriver standings:\n");
+        String mileage =
+                Double.isFinite(totalMileage) && totalMileage >= 0
+                        ? String.format(Locale.ROOT, "%.2f", totalMileage)
+                        : "Unavailable";
+        StringBuilder report =
+                new StringBuilder("Team performance: ")
+                        .append(name)
+                        .append(" (")
+                        .append(teamId)
+                        .append(")\n")
+                        .append("Cars: ")
+                        .append(cars.size())
+                        .append('/')
+                        .append(capacity)
+                        .append('\n')
+                        .append("Ready cars: ")
+                        .append(readyCars)
+                        .append('\n')
+                        .append("Decommissioned cars: ")
+                        .append(decommissionedCars)
+                        .append('\n')
+                        .append("Total mileage (km): ")
+                        .append(mileage)
+                        .append('\n')
+                        .append("Drivers: ")
+                        .append(drivers.size())
+                        .append('\n')
+                        .append("Engineers: ")
+                        .append(engineers.size())
+                        .append('\n')
+                        .append("Recorded results: ")
+                        .append(validResults.size())
+                        .append('\n')
+                        .append("Championship points: ")
+                        .append(championshipPoints)
+                        .append('\n')
+                        .append("Wins: ")
+                        .append(wins)
+                        .append('\n')
+                        .append("Podiums: ")
+                        .append(podiums)
+                        .append('\n')
+                        .append("Best finish: ")
+                        .append(validResults.isEmpty() ? "N/A" : bestFinish)
+                        .append('\n')
+                        .append("Average finish: ")
+                        .append(
+                                validResults.isEmpty()
+                                        ? "N/A"
+                                        : String.format(
+                                                Locale.ROOT,
+                                                "%.2f",
+                                                finishTotal / validResults.size()))
+                        .append("\nDriver standings:\n");
         if (drivers.isEmpty()) {
             report.append("No registered drivers.\n");
         } else {
             drivers.stream()
-                    .sorted(java.util.Comparator.comparingInt(Driver::getChampionshipPoints).reversed()
-                            .thenComparing(Driver::getDriverId))
-                    .forEach(driver -> report.append(driver.getDriverId()).append(": ")
-                            .append(driver.getChampionshipPoints()).append(" points\n"));
+                    .sorted(
+                            java.util.Comparator.comparingInt(Driver::getChampionshipPoints)
+                                    .reversed()
+                                    .thenComparing(Driver::getDriverId))
+                    .forEach(
+                            driver ->
+                                    report.append(driver.getDriverId())
+                                            .append(": ")
+                                            .append(driver.getChampionshipPoints())
+                                            .append(" points\n"));
         }
         return report.toString();
     }
@@ -487,11 +598,25 @@ public final class Team {
 
     @Override
     public String toString() {
-        return "Team{teamId='" + teamId + "', name='" + name + "', capacity=" + capacity
-                + ", cars=" + cars.size() + ", drivers=" + drivers.size()
-                + ", engineers=" + engineers.size()
-                + ", championshipPoints=" + championshipPoints
-                + ", raceResults=" + raceResults.size() + ", strategies=" + strategies.size() + "}";
+        return "Team{teamId='"
+                + teamId
+                + "', name='"
+                + name
+                + "', capacity="
+                + capacity
+                + ", cars="
+                + cars.size()
+                + ", drivers="
+                + drivers.size()
+                + ", engineers="
+                + engineers.size()
+                + ", championshipPoints="
+                + championshipPoints
+                + ", raceResults="
+                + raceResults.size()
+                + ", strategies="
+                + strategies.size()
+                + "}";
     }
 
     private static void requirePositiveQuantity(int quantity) {
@@ -506,8 +631,8 @@ public final class Team {
         }
     }
 
-    private static <T> T findRegistered(List<T> members, T member,
-            Function<T, String> identity, String type) {
+    private static <T> T findRegistered(
+            List<T> members, T member, Function<T, String> identity, String type) {
         if (member == null) {
             throw new IllegalArgumentException(type + " is required.");
         }
@@ -520,14 +645,8 @@ public final class Team {
         return null;
     }
 
-    private static <T> boolean register(List<T> members, T member,
-            Function<T, String> identity, int limit, String type) {
-        validateRegistration(members, member, identity, limit, type);
-        return members.add(member);
-    }
-
-    private static <T> void validateRegistration(List<T> members, T member,
-            Function<T, String> identity, int limit, String type) {
+    private static <T> void validateRegistration(
+            List<T> members, T member, Function<T, String> identity, int limit, String type) {
         if (member == null) {
             throw new IllegalArgumentException(type + " is required.");
         }
@@ -538,7 +657,8 @@ public final class Team {
             }
         }
         if (members.size() >= limit) {
-            throw new CapacityExceededException(type + " capacity of " + limit + " has been reached.");
+            throw new CapacityExceededException(
+                    type + " capacity of " + limit + " has been reached.");
         }
     }
 

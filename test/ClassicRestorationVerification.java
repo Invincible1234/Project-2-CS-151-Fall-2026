@@ -2,6 +2,7 @@ package test;
 
 import f1.model.ClassicRaceCar;
 import f1.model.SessionType;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -19,20 +20,23 @@ public class ClassicRestorationVerification {
         car.prepareForSession(SessionType.PRACTICE);
         for (int delta : new int[] {11, -91, Integer.MAX_VALUE, Integer.MIN_VALUE}) {
             expect(IllegalArgumentException.class, () -> car.updateOriginalityScore(delta));
-            check(car.getOriginalityScore() == 90 && car.isRaceReady(),
+            check(
+                    car.getOriginalityScore() == 90 && car.isRaceReady(),
                     "Rejected originality change altered score or preparation.");
         }
         car.updateOriginalityScore(10);
-        check(car.getOriginalityScore() == 100 && !car.isRaceReady(),
+        check(
+                car.getOriginalityScore() == 100 && !car.isRaceReady(),
                 "A valid authenticity change did not invalidate setup.");
         car.updateOriginalityScore(-100);
         check(car.getOriginalityScore() == 0, "The lower score boundary was rejected.");
         car.updateOriginalityScore(90);
-        car.prepareForSession(SessionType.RACE);
+        car.prepareForSession(SessionType.PRACTICE);
         car.startSession();
         expect(IllegalStateException.class, () -> car.updateOriginalityScore(1));
         expect(IllegalStateException.class, () -> car.scheduleRestoration(2026));
-        check(car.isSessionActive() && car.getOriginalityScore() == 90,
+        check(
+                car.isSessionActive() && car.getOriginalityScore() == 90,
                 "Rejected work interrupted the active session.");
     }
 
@@ -42,12 +46,15 @@ public class ClassicRestorationVerification {
         expect(IllegalStateException.class, () -> car.completeRestoration(0, "No restoration"));
         expect(IllegalArgumentException.class, () -> car.scheduleRestoration(2025));
         expect(IllegalArgumentException.class, () -> car.scheduleRestoration(10000));
-        check(!car.isRestorationInProgress() && car.getRestorationYear() == 2020,
+        check(
+                !car.isRestorationInProgress() && car.getRestorationYear() == 2020,
                 "Invalid scheduling changed restoration history.");
         check(car.scheduleRestoration(2026), "Scheduling failed.");
-        check(car.isRestorationInProgress() && car.getScheduledRestorationYear() == 2026,
+        check(
+                car.isRestorationInProgress() && car.getScheduledRestorationYear() == 2026,
                 "Scheduled restoration was not retained.");
-        check(car.getRestorationYear() == 2020 && !car.isAvailableForRace(),
+        check(
+                car.getRestorationYear() == 2020 && !car.isAvailableForRace(),
                 "Scheduling prematurely completed restoration or left the car available.");
         expect(IllegalStateException.class, () -> car.scheduleRestoration(2026));
         expect(IllegalStateException.class, () -> car.performService("Bypass restoration"));
@@ -57,21 +64,32 @@ public class ClassicRestorationVerification {
         check(!car.prepareForSession(SessionType.PRACTICE), "Restoration allowed preparation.");
         expect(IllegalArgumentException.class, () -> car.completeRestoration(11, "Invalid score"));
         expect(IllegalArgumentException.class, () -> car.completeRestoration(5, "  "));
-        check(car.isRestorationInProgress() && car.getOriginalityScore() == 90
-                && car.getMileageSinceService() == 500 && car.getLastServiceDate().isEmpty(),
+        check(
+                car.isRestorationInProgress()
+                        && car.getOriginalityScore() == 90
+                        && car.getMileageSinceService() == 500
+                        && car.getLastServiceDate().isEmpty(),
                 "Rejected completion partially changed the car.");
         car.completeRestoration(5, "Rebuilt and inspected original components");
-        check(!car.isRestorationInProgress() && car.getScheduledRestorationYear() == 0
-                && car.getRestorationYear() == 2026 && car.getOriginalityScore() == 95,
+        check(
+                !car.isRestorationInProgress()
+                        && car.getScheduledRestorationYear() == 0
+                        && car.getRestorationYear() == 2026
+                        && car.getOriginalityScore() == 95,
                 "Restoration completion did not update history and authenticity.");
-        check(car.getTotalMileage() == 500 && car.getMileageSinceService() == 0
-                && car.getOutOfServiceReason().isEmpty()
-                && car.getLastServiceDate().equals("2026-10-22"),
+        check(
+                car.getTotalMileage() == 500
+                        && car.getMileageSinceService() == 0
+                        && car.getOutOfServiceReason().isEmpty()
+                        && car.getLastServiceDate().equals("2026-10-22"),
                 "Restoration servicing lost mileage or failed to clear the service restriction.");
         check(!car.isRaceReady(), "Restoration must require fresh preparation.");
         check(car.prepareForSession(SessionType.PRACTICE), "Restored car could not prepare.");
-        expect(IllegalStateException.class, () -> car.completeRestoration(5, "Repeated completion"));
-        check(car.getOriginalityScore() == 95 && car.isRaceReady(),
+        expect(
+                IllegalStateException.class,
+                () -> car.completeRestoration(5, "Repeated completion"));
+        check(
+                car.getOriginalityScore() == 95 && car.isRaceReady(),
                 "Repeated completion changed the car.");
     }
 
@@ -79,13 +97,16 @@ public class ClassicRestorationVerification {
         ClassicRaceCar future = new DatedClassic();
         future.scheduleRestoration(2027);
         expect(IllegalStateException.class, () -> future.completeRestoration(0, "Too early"));
-        check(future.getRestorationYear() == 2020 && future.isRestorationInProgress(),
+        check(
+                future.getRestorationYear() == 2020 && future.isRestorationInProgress(),
                 "Future restoration changed completed history.");
         ClassicRaceCar reserved = new DatedClassic();
-        reserved.scheduleStrategy("Reserved race");
+        reserved.prepareForSession(SessionType.PRACTICE);
+        reserved.startSession();
         expect(IllegalStateException.class, () -> reserved.scheduleRestoration(2026));
         expect(IllegalStateException.class, () -> reserved.updateOriginalityScore(1));
-        check(!reserved.isRestorationInProgress() && reserved.getOriginalityScore() == 90,
+        check(
+                !reserved.isRestorationInProgress() && reserved.getOriginalityScore() == 90,
                 "Reserved-car rejection changed state.");
         expect(IllegalArgumentException.class, () -> new DatedClassic(1979));
         expect(IllegalArgumentException.class, () -> new DatedClassic(2027));
@@ -97,7 +118,14 @@ public class ClassicRestorationVerification {
         }
 
         private DatedClassic(int restorationYear) {
-            super("C-RESTORE", "Team", "Classic", 1980, 90, restorationYear, 300,
+            super(
+                    "C-RESTORE",
+                    "Team",
+                    "Classic",
+                    1980,
+                    90,
+                    restorationYear,
+                    300,
                     Clock.fixed(Instant.parse("2026-10-22T12:00:00Z"), ZoneOffset.UTC));
         }
     }

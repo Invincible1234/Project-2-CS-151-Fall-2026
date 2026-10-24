@@ -1,12 +1,14 @@
 package test;
 
 import exception.DuplicateEntityException;
+
 import f1.model.Driver;
 import f1.model.F1Car;
+import f1.model.RaceResult;
 import f1.model.RaceStrategy;
 import f1.model.SessionType;
-import f1.model.RaceResult;
 import f1.model.Team;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -41,15 +43,20 @@ public class RacePointsIntegrationVerification {
         checkTotals(team, driver, car, 25);
         expect(IllegalStateException.class, () -> team.recordRaceResult(win));
         expect(IllegalStateException.class, win::applyPointsToDriverAndTeam);
-        expect(DuplicateEntityException.class,
+        expect(
+                DuplicateEntityException.class,
                 () -> team.recordRaceResult(result("COPY", "RACE-1", driverId, 2)));
-        expect(DuplicateEntityException.class,
+        expect(
+                DuplicateEntityException.class,
                 () -> team.recordRaceResult(result("OTHER-COPY", "RACE-1", "OTHER", 2)));
-        check(other.getChampionshipPoints() == 0 && team.getRaceResults().size() == 1,
+        check(
+                other.getChampionshipPoints() == 0 && team.getRaceResults().size() == 1,
                 "Duplicate entry changed points or membership.");
         win.correctFinishingPosition(2, "Timing correction");
         checkTotals(team, driver, car, 18);
-        check(team.generateTeamPerformanceReport().contains("Best finish: 2"), "Report ignored correction.");
+        check(
+                team.generateTeamPerformanceReport().contains("Best finish: 2"),
+                "Report ignored correction.");
         expect(IllegalArgumentException.class, () -> win.correctFinishingPosition(0, "Invalid"));
         expect(IllegalArgumentException.class, () -> win.voidResult(" "));
         checkTotals(team, driver, car, 18);
@@ -59,12 +66,15 @@ public class RacePointsIntegrationVerification {
         checkTotals(team, driver, car, 25);
         win.voidResult("Disqualified");
         checkTotals(team, driver, car, 0);
-        check(team.getRaceResults().size() == 1 && team.generateTeamPerformanceReport().contains("Wins: 0")
-                && team.generateTeamPerformanceReport().contains("Recorded results: 0")
-                && team.generateTeamPerformanceReport().contains("Best finish: N/A"),
+        check(
+                team.getRaceResults().size() == 1
+                        && team.generateTeamPerformanceReport().contains("Wins: 0")
+                        && team.generateTeamPerformanceReport().contains("Recorded results: 0")
+                        && team.generateTeamPerformanceReport().contains("Best finish: N/A"),
                 "Voided results corrupted history or performance reporting.");
         expect(IllegalStateException.class, () -> win.voidResult("Repeat"));
-        expect(DuplicateEntityException.class,
+        expect(
+                DuplicateEntityException.class,
                 () -> team.recordRaceResult(result("REPLACEMENT", "RACE-1", driverId, 1)));
         completeNext(context);
         team.recordRaceResult(result("PODIUM", "RACE-2", driverId, 3));
@@ -78,7 +88,8 @@ public class RacePointsIntegrationVerification {
         Team wrong = new Team("WRONG", "Wrong", 1, 0);
         RaceResult unregistered = result("UNREGISTERED", "RACE-4", driverId, 1);
         expect(IllegalArgumentException.class, () -> wrong.recordRaceResult(unregistered));
-        check(!unregistered.arePointsApplied() && wrong.getRaceResults().isEmpty(),
+        check(
+                !unregistered.arePointsApplied() && wrong.getRaceResults().isEmpty(),
                 "Failed registration partially applied points.");
         checkTotals(team, driver, car, 16);
         System.out.println("Race points integration verification passed.");
@@ -88,7 +99,9 @@ public class RacePointsIntegrationVerification {
         context.team().assignDriver(context.driver(), context.car());
         context.engineer().assignToCar(context.car());
         context.car().prepareForSession(SessionType.RACE);
-        RaceStrategy strategy = StrategyCompletionFixture.strategy(context.team(), context.car(), context.engineer());
+        RaceStrategy strategy =
+                StrategyCompletionFixture.strategy(
+                        context.team(), context.car(), context.engineer());
         circuit = strategy.getCircuit().getCircuitId();
         strategy.markReady();
         context.car().scheduleStrategy(strategy);
@@ -97,14 +110,23 @@ public class RacePointsIntegrationVerification {
     }
 
     private static RaceResult result(String id, String race, String driver, int position) {
-        RaceResult result = new RaceResult(id, race, chassis, driver, circuit, position, "2026-10-22",
-                Clock.fixed(Instant.parse("2026-10-22T12:00:00Z"), ZoneOffset.UTC));
+        RaceResult result =
+                new RaceResult(
+                        id,
+                        race,
+                        chassis,
+                        driver,
+                        circuit,
+                        position,
+                        "2026-10-22",
+                        Clock.fixed(Instant.parse("2026-10-22T12:00:00Z"), ZoneOffset.UTC));
         result.recordResult();
         return result;
     }
 
     private static void checkTotals(Team team, Driver driver, F1Car car, int points) {
-        check(team.getChampionshipPoints() == points && driver.getChampionshipPoints() == points,
+        check(
+                team.getChampionshipPoints() == points && driver.getChampionshipPoints() == points,
                 "Team and driver totals disagree.");
         check(car.getTotalMileage() == expectedMileage, "Points accounting counted mileage again.");
     }

@@ -1,6 +1,7 @@
 package test;
 
 import exception.RegulatoryViolationException;
+
 import f1.model.HybridEnergyPlan;
 
 public final class HybridEnergyPlanVerification {
@@ -8,20 +9,41 @@ public final class HybridEnergyPlanVerification {
 
     public static void main(String[] args) {
         HybridEnergyPlan plan = HybridEnergyPlan.parse(" deploy = 2.5 ; recover = 1 ");
-        check(plan.getDeploymentMj() == 2.5 && plan.getRecoveryMj() == 1, "Plan values must be parsed.");
+        check(
+                plan.getDeploymentMj() == 2.5 && plan.getRecoveryMj() == 1,
+                "Plan values must be parsed.");
         check("DEPLOY=2.5;RECOVER=1.0".equals(plan.toString()), "Plan format must be canonical.");
         HybridEnergyPlan maximum = HybridEnergyPlan.parse("DEPLOY=4;RECOVER=9");
-        check(maximum.getDeploymentMj() == 4 && maximum.getRecoveryMj() == 9, "Exact limits must be valid.");
+        check(
+                maximum.getDeploymentMj() == 4 && maximum.getRecoveryMj() == 9,
+                "Exact limits must be valid.");
         HybridEnergyPlan zero = HybridEnergyPlan.parse("DEPLOY=-0.0;RECOVER=0");
-        check("DEPLOY=0.0;RECOVER=0.0".equals(zero.toString()), "Coasting plans and signed zero must normalize.");
+        check(
+                "DEPLOY=0.0;RECOVER=0.0".equals(zero.toString()),
+                "Coasting plans and signed zero must normalize.");
         HybridEnergyPlan small = HybridEnergyPlan.parse("DEPLOY=1e-100;RECOVER=.5");
-        check(HybridEnergyPlan.parse(small.toString()).getDeploymentMj() == small.getDeploymentMj(),
+        check(
+                HybridEnergyPlan.parse(small.toString()).getDeploymentMj()
+                        == small.getDeploymentMj(),
                 "Canonical plans must support round-trip parsing.");
-        for (String invalid : new String[] { null, "", "DEPLOY=2", "DEPLOY=2;RECOVER=1;",
-                "RECOVER=1;DEPLOY=2", "DEPLOY=1;DEPLOY=2", "DEPLOY=;RECOVER=1",
-                "DEPLOY=NaN;RECOVER=0", "DEPLOY=1;RECOVER=Infinity", "DEPLOY=-1;RECOVER=0",
-                "DEPLOY=1;RECOVER=-1", "DEPLOY=1e999;RECOVER=0", "DEPLOY=0x1p0;RECOVER=0",
-                "DEPLOY=-1e-999;RECOVER=0", "DEPLOY=1e-999;RECOVER=0" }) {
+        for (String invalid :
+                new String[] {
+                    null,
+                    "",
+                    "DEPLOY=2",
+                    "DEPLOY=2;RECOVER=1;",
+                    "RECOVER=1;DEPLOY=2",
+                    "DEPLOY=1;DEPLOY=2",
+                    "DEPLOY=;RECOVER=1",
+                    "DEPLOY=NaN;RECOVER=0",
+                    "DEPLOY=1;RECOVER=Infinity",
+                    "DEPLOY=-1;RECOVER=0",
+                    "DEPLOY=1;RECOVER=-1",
+                    "DEPLOY=1e999;RECOVER=0",
+                    "DEPLOY=0x1p0;RECOVER=0",
+                    "DEPLOY=-1e-999;RECOVER=0",
+                    "DEPLOY=1e-999;RECOVER=0"
+                }) {
             expectFailure(IllegalArgumentException.class, invalid);
         }
         expectFailure(RegulatoryViolationException.class, "DEPLOY=4.01;RECOVER=0");
@@ -37,7 +59,9 @@ public final class HybridEnergyPlanVerification {
             if (!expected.isInstance(error)) {
                 throw new AssertionError("Unexpected rejection type.", error);
             }
-            check(error.getMessage() != null && !error.getMessage().isBlank(), "Rejection must explain the error.");
+            check(
+                    error.getMessage() != null && !error.getMessage().isBlank(),
+                    "Rejection must explain the error.");
         }
     }
 

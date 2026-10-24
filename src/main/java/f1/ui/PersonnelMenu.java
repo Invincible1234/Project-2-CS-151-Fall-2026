@@ -1,19 +1,19 @@
 package f1.ui;
 
+import f1.model.ClassicRaceCar;
 import f1.model.Driver;
 import f1.model.Engineer;
-import f1.model.EngineerSpecialty;
 import f1.model.F1Car;
 import f1.model.HybridRaceCar;
-import f1.model.ClassicRaceCar;
+import f1.model.Team;
 import f1.model.UserRole;
 import f1.service.PersonnelRegistry;
+
 import util.AccessContext;
 
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.io.InputStreamReader;
-import f1.model.Team;
 
 public final class PersonnelMenu {
     private final PersonnelRegistry registry;
@@ -35,16 +35,20 @@ public final class PersonnelMenu {
     }
 
     public UserRole open(UserRole role) {
-        currentUser = new AccessContext(role, "");
+        return open(new AccessContext(role, "")).getRole();
+    }
+
+    public AccessContext open(AccessContext caller) {
+        currentUser = java.util.Objects.requireNonNull(caller, "Access context is required.");
         printMenu();
-        int action = input.integer("Personnel action (0 Back)", 0, 21);
+        int action = input.integer("Personnel action (0 Back)", 0, 23);
         if (action != 0) {
             handleChoice(Integer.toString(action));
         }
         if (input.isExitRequested()) {
             throw new ConsoleInput.ExitRequestedException();
         }
-        return currentUser.getRole();
+        return currentUser;
     }
 
     private PersonnelTeamActions teamActions() {
@@ -62,13 +66,6 @@ public final class PersonnelMenu {
             }
         }
         return null;
-    }
-
-    private void ensureCarsAvailable() {
-        if (cars.isEmpty()) {
-            input.show("No cars available. Create a car first.");
-            throw new IllegalStateException("No cars available");
-        }
     }
 
     public void run() {
@@ -115,6 +112,8 @@ public final class PersonnelMenu {
         input.show("19. Create Hybrid Car");
         input.show("20. Create Classic Car");
         input.show("21. List Cars");
+        input.show("22. View Personnel Details");
+        input.show("23. Find Driver by License");
         input.show("0. Back | EXIT. Quit");
     }
 
@@ -141,7 +140,27 @@ public final class PersonnelMenu {
             case "19" -> createHybridCar();
             case "20" -> createClassicCar();
             case "21" -> listCars();
+            case "22" -> viewPersonnelDetails();
+            case "23" -> {
+                Driver driver = registry.findDriverByLicense(input.text("Driver license"));
+                input.show(driver == null ? "Driver not found." : driver);
+            }
             default -> input.show("Unrecognized choice: " + choice);
+        }
+    }
+
+    private void viewPersonnelDetails() {
+        if (input.integer("Personnel type: 1 Driver | 2 Engineer", 1, 2) == 1) {
+            Driver driver = input.select("Driver", registry.getDrivers(), Driver::getDriverId);
+            input.show(driver);
+            input.show("Phone: " + driver.phoneFor(currentUser));
+            input.show("Medical notes: " + driver.medicalNotesFor(currentUser));
+            input.show("Ban reason: " + driver.banReasonFor(currentUser));
+            input.show("Preferred setup: " + driver.getPreferredSetup());
+        } else {
+            Engineer engineer = teamActions().engineer();
+            input.show(engineer);
+            input.show("Phone: " + engineer.phoneFor(currentUser));
         }
     }
 
@@ -304,16 +323,24 @@ public final class PersonnelMenu {
 
     private void setCurrentUserRole() {
         try {
-            UserRole role = input.readEnum("Enter role (VIEWER, DRIVER, ENGINEER, TEAM_PRINCIPAL): ", UserRole.class);
+            UserRole role =
+                    input.readEnum(
+                            "Enter role (VIEWER, DRIVER, ENGINEER, TEAM_PRINCIPAL): ",
+                            UserRole.class);
             String actorId = "";
-            if (role == UserRole.DRIVER || role == UserRole.ENGINEER || role == UserRole.TEAM_PRINCIPAL) {
+            if (role == UserRole.DRIVER
+                    || role == UserRole.ENGINEER
+                    || role == UserRole.TEAM_PRINCIPAL) {
                 actorId = input.readText("Enter actor ID: ");
                 if ("EXIT".equals(actorId)) {
                     return;
                 }
             }
             currentUser = new AccessContext(role, actorId);
-            input.show("Current user set to: " + role + (actorId.isEmpty() ? "" : " (" + actorId + ")"));
+            input.show(
+                    "Current user set to: "
+                            + role
+                            + (actorId.isEmpty() ? "" : " (" + actorId + ")"));
         } catch (ConsoleInput.ExitRequestedException e) {
         }
     }
@@ -333,7 +360,16 @@ public final class PersonnelMenu {
             int year = input.readInt("Year: ");
             double batteryCapacity = input.readInt("Battery capacity (MJ): ");
             double currentEnergy = input.readInt("Current energy (MJ): ");
-            HybridRaceCar car = new HybridRaceCar(chassisId, teamName, model, year, batteryCapacity, currentEnergy);
+            HybridRaceCar car =
+                    new HybridRaceCar(
+                            chassisId,
+                            teamName,
+                            model,
+                            year,
+                            batteryCapacity,
+                            currentEnergy,
+                            f1.model.HybridUpgrade.BALANCED.getPowerKw(),
+                            input.clock());
             if (team != null) {
                 team.addCar(car);
             }
@@ -361,7 +397,16 @@ public final class PersonnelMenu {
             int originalityScore = input.readInt("Originality score (0-100): ");
             int restorationYear = input.readInt("Restoration year: ");
             double powerLimit = input.readInt("Power limit (kW): ");
-            ClassicRaceCar car = new ClassicRaceCar(chassisId, teamName, model, year, originalityScore, restorationYear, powerLimit);
+            ClassicRaceCar car =
+                    new ClassicRaceCar(
+                            chassisId,
+                            teamName,
+                            model,
+                            year,
+                            originalityScore,
+                            restorationYear,
+                            powerLimit,
+                            input.clock());
             if (team != null) {
                 team.addCar(car);
             }
@@ -380,7 +425,17 @@ public final class PersonnelMenu {
         }
         input.show("Available cars:");
         for (F1Car car : cars) {
-            input.show("  " + car.getChassisId() + " (" + car.getClass().getSimpleName() + ") - " + car.getTeamName() + " " + car.getModel() + " " + car.getYear());
+            input.show(
+                    "  "
+                            + car.getChassisId()
+                            + " ("
+                            + car.getClass().getSimpleName()
+                            + ") - "
+                            + car.getTeamName()
+                            + " "
+                            + car.getModel()
+                            + " "
+                            + car.getYear());
         }
     }
 

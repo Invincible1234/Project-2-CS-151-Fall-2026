@@ -1,6 +1,7 @@
 package f1.model;
 
 import exception.RegulatoryViolationException;
+
 import java.math.BigDecimal;
 import java.util.Locale;
 
@@ -24,7 +25,8 @@ public final class HybridEnergyPlan {
         double deployment = parseEntry(entries[0], "DEPLOY");
         double recovery = parseEntry(entries[1], "RECOVER");
         if (deployment > 4.0 || recovery > 9.0) {
-            throw new RegulatoryViolationException("Each lap permits at most 4 MJ deployment and 9 MJ recovery.");
+            throw new RegulatoryViolationException(
+                    "Each lap permits at most 4 MJ deployment and 9 MJ recovery.");
         }
         return new HybridEnergyPlan(deployment, recovery);
     }
@@ -44,7 +46,8 @@ public final class HybridEnergyPlan {
         }
         String number = pair[1].strip();
         if (!number.matches("[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?")) {
-            throw new IllegalArgumentException("Energy values must be finite, nonnegative numbers.");
+            throw new IllegalArgumentException(
+                    "Energy values must be finite, nonnegative numbers.");
         }
         double value;
         int sign;
@@ -52,10 +55,12 @@ public final class HybridEnergyPlan {
             sign = new BigDecimal(number).signum();
             value = Double.parseDouble(number);
         } catch (NumberFormatException error) {
-            throw new IllegalArgumentException("Energy values must be finite, nonnegative numbers.");
+            throw new IllegalArgumentException(
+                    "Energy values must be finite, nonnegative numbers.");
         }
         if (!Double.isFinite(value) || sign < 0 || value == 0 && sign > 0) {
-            throw new IllegalArgumentException("Energy values must be representable, finite, nonnegative numbers.");
+            throw new IllegalArgumentException(
+                    "Energy values must be representable, finite, nonnegative numbers.");
         }
         return value == 0 ? 0 : value;
     }

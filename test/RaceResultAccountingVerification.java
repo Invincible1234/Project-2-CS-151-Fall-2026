@@ -6,31 +6,46 @@ import java.time.ZoneOffset;
 
 public class RaceResultAccountingVerification {
     public static void main(String[] args) {
-        RaceResult result = new RaceResult("ACCOUNT", "RACE", "CAR", "DRIVER", "CIRCUIT",
-                1, "2026-10-22", Clock.fixed(Instant.parse("2026-10-22T12:00:00Z"), ZoneOffset.UTC));
+        RaceResult result =
+                new RaceResult(
+                        "ACCOUNT",
+                        "RACE",
+                        "CAR",
+                        "DRIVER",
+                        "CIRCUIT",
+                        1,
+                        "2026-10-22",
+                        Clock.fixed(Instant.parse("2026-10-22T12:00:00Z"), ZoneOffset.UTC));
         result.recordResult();
         expect(IllegalStateException.class, result::applyPointsToDriverAndTeam);
         int[] awarded = {0};
         boolean[] reject = {true};
-        result.bindPointsAccount(delta -> {
-            if (reject[0]) {
-                throw new IllegalStateException("Rejected by the points account.");
-            }
-            awarded[0] += delta;
-        });
+        result.bindPointsAccount(
+                delta -> {
+                    if (reject[0]) {
+                        throw new IllegalStateException("Rejected by the points account.");
+                    }
+                    awarded[0] += delta;
+                });
         expect(IllegalStateException.class, result::applyPointsToDriverAndTeam);
         check(!result.arePointsApplied() && awarded[0] == 0, "Failed award changed result state.");
         reject[0] = false;
         result.applyPointsToDriverAndTeam();
         check(result.arePointsApplied() && awarded[0] == 25, "Initial award was incorrect.");
         expect(IllegalStateException.class, result::applyPointsToDriverAndTeam);
-        expect(IllegalStateException.class, () -> result.bindPointsAccount(delta -> { }));
+        expect(IllegalStateException.class, () -> result.bindPointsAccount(delta -> {}));
         reject[0] = true;
-        expect(IllegalStateException.class, () -> result.correctFinishingPosition(2, "Rejected correction"));
+        expect(
+                IllegalStateException.class,
+                () -> result.correctFinishingPosition(2, "Rejected correction"));
         expect(IllegalStateException.class, () -> result.voidResult("Rejected void"));
-        check(result.getFinishingPosition() == 1 && result.getPointsEarned() == 25
-                && result.getCorrectionReason().isEmpty() && result.getVoidReason().isEmpty()
-                && result.isValidResult() && awarded[0] == 25,
+        check(
+                result.getFinishingPosition() == 1
+                        && result.getPointsEarned() == 25
+                        && result.getCorrectionReason().isEmpty()
+                        && result.getVoidReason().isEmpty()
+                        && result.isValidResult()
+                        && awarded[0] == 25,
                 "Failed accounting changed result history or status.");
         reject[0] = false;
         result.correctFinishingPosition(2, "Timing correction");

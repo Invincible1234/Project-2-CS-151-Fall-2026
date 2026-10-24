@@ -2,19 +2,23 @@ package f1.ui;
 
 import exception.CapacityExceededException;
 import exception.DuplicateEntityException;
+
 import f1.model.Circuit;
-import f1.service.CircuitRegistry;
 import f1.model.Team;
 import f1.model.UserRole;
+import f1.service.CircuitRegistry;
+
+import util.Constants;
+import util.IdentityRegistry;
+
 import java.util.ArrayList;
 import java.util.List;
-import util.Constants;
 
 public final class ConsoleState {
     private final List<Team> teams = new ArrayList<>();
     private final CircuitRegistry circuits = new CircuitRegistry();
     private Team selectedTeam;
-    private UserRole role = UserRole.VIEWER;
+    private util.AccessContext access = new util.AccessContext(UserRole.VIEWER, "");
 
     public List<Team> getTeams() {
         return List.copyOf(teams);
@@ -46,6 +50,7 @@ public final class ConsoleState {
         if (teams.size() >= Constants.MAXIMUM_INSTANCES) {
             throw new CapacityExceededException("Team capacity has been reached.");
         }
+        IdentityRegistry.claim(this, team, List.of("Team ID", team.getTeamId()));
         teams.add(team);
         selectedTeam = team;
     }
@@ -59,10 +64,18 @@ public final class ConsoleState {
     }
 
     public UserRole getRole() {
-        return role;
+        return access.getRole();
+    }
+
+    public util.AccessContext getAccessContext() {
+        return access;
+    }
+
+    public void setAccessContext(util.AccessContext access) {
+        this.access = java.util.Objects.requireNonNull(access, "Access context is required.");
     }
 
     public void setRole(UserRole role) {
-        this.role = java.util.Objects.requireNonNull(role);
+        setAccessContext(new util.AccessContext(role, ""));
     }
 }

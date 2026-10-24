@@ -1,10 +1,12 @@
 package f1.model;
 
-import java.util.ArrayList;
-import java.util.List;
 import model.WeatherCondition;
+
 import util.InstanceLimit;
 import util.Validation;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class Circuit {
     private final String circuitId;
@@ -17,14 +19,23 @@ public final class Circuit {
     private final List<String> cornerNotes = new ArrayList<>();
     private final List<Double> historicalLapTimes = new ArrayList<>();
 
-    public Circuit(String circuitId, String name, double lengthKm, int numberOfCorners,
-            boolean hasLongStraights, WeatherCondition typicalWeather, String location) {
+    public Circuit(
+            String circuitId,
+            String name,
+            double lengthKm,
+            int numberOfCorners,
+            boolean hasLongStraights,
+            WeatherCondition typicalWeather,
+            String location) {
         this.circuitId = Validation.requireText(circuitId, "Circuit ID");
         this.name = Validation.requireText(name, "Circuit name");
         this.location = Validation.requireText(location, "Circuit location");
-        if (!Double.isFinite(lengthKm) || lengthKm <= 0 || numberOfCorners < 1
+        if (!Double.isFinite(lengthKm)
+                || lengthKm <= 0
+                || numberOfCorners < 1
                 || !Double.isFinite(lengthKm * 20 + numberOfCorners * 0.5)) {
-            throw new IllegalArgumentException("Circuit length must be finite and positive, with at least one corner.");
+            throw new IllegalArgumentException(
+                    "Circuit length must be finite and positive, with at least one corner.");
         }
         if (typicalWeather == null) {
             throw new IllegalArgumentException("Circuit weather is required.");
@@ -121,22 +132,26 @@ public final class Circuit {
     }
 
     public String generateStrategyHint() {
-        String tires = switch (typicalWeather) {
-            case RAIN -> "Use INTERMEDIATE tires and conservative energy deployment.";
-            case WET -> "Use WET tires and prioritize grip over boost.";
-            case EXTREME_HEAT -> "Consider HARD tires and monitor tire wear and cooling.";
-            case CLEAR, CLOUDY -> "Use dry-weather tires suited to the planned stint.";
-        };
-        boolean dry = typicalWeather != WeatherCondition.RAIN && typicalWeather != WeatherCondition.WET;
-        String layout = hasLongStraights && dry
-                ? " Plan available boost on long straights within lap limits."
-                : " Prioritize traction and corner stability.";
+        String tires =
+                switch (typicalWeather) {
+                    case RAIN -> "Use INTERMEDIATE tires and conservative energy deployment.";
+                    case WET -> "Use WET tires and prioritize grip over boost.";
+                    case EXTREME_HEAT -> "Consider HARD tires and monitor tire wear and cooling.";
+                    case CLEAR, CLOUDY -> "Use dry-weather tires suited to the planned stint.";
+                };
+        boolean dry =
+                typicalWeather != WeatherCondition.RAIN && typicalWeather != WeatherCondition.WET;
+        String layout =
+                hasLongStraights && dry
+                        ? " Plan available boost on long straights within lap limits."
+                        : " Prioritize traction and corner stability.";
         return tires + layout;
     }
 
     @Override
     public boolean equals(Object other) {
-        return this == other || other instanceof Circuit circuit && circuitId.equals(circuit.circuitId);
+        return this == other
+                || other instanceof Circuit circuit && circuitId.equals(circuit.circuitId);
     }
 
     @Override
@@ -146,9 +161,22 @@ public final class Circuit {
 
     @Override
     public String toString() {
-        return "Circuit{id='" + circuitId + "', name='" + name + "', lengthKm=" + lengthKm
-                + ", corners=" + numberOfCorners + ", weather=" + typicalWeather
-                + ", location='" + location + "', notes=" + cornerNotes.size()
-                + ", historicalLaps=" + historicalLapTimes.size() + "}";
+        return "Circuit{id='"
+                + circuitId
+                + "', name='"
+                + name
+                + "', lengthKm="
+                + lengthKm
+                + ", corners="
+                + numberOfCorners
+                + ", weather="
+                + typicalWeather
+                + ", location='"
+                + location
+                + "', notes="
+                + cornerNotes.size()
+                + ", historicalLaps="
+                + historicalLapTimes.size()
+                + "}";
     }
 }

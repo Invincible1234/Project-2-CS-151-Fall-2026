@@ -1,8 +1,11 @@
 package f1.model;
 
 import exception.RegulatoryViolationException;
-import java.util.Locale;
+
 import model.WeatherCondition;
+
+import java.time.Clock;
+import java.util.Locale;
 
 public class HybridRaceCar extends F1Car {
     private static final double MAX_DEPLOYMENT_PER_LAP_MJ = 4.0;
@@ -17,19 +20,59 @@ public class HybridRaceCar extends F1Car {
     private int currentLapNumber;
     private boolean lapCompleted;
 
-    public HybridRaceCar(String chassisId, String teamName, String model, int year,
-            double batteryCapacityMJ, double currentEnergyMJ) {
-        this(chassisId, teamName, model, year, batteryCapacityMJ, currentEnergyMJ,
+    public HybridRaceCar(
+            String chassisId,
+            String teamName,
+            String model,
+            int year,
+            double batteryCapacityMJ,
+            double currentEnergyMJ) {
+        this(
+                chassisId,
+                teamName,
+                model,
+                year,
+                batteryCapacityMJ,
+                currentEnergyMJ,
                 HybridUpgrade.BALANCED.getPowerKw());
     }
 
-    public HybridRaceCar(String chassisId, String teamName, String model, int year,
-            double batteryCapacityMJ, double currentEnergyMJ, double mguKPowerKw) {
-        super(chassisId, teamName, model, year);
+    public HybridRaceCar(
+            String chassisId,
+            String teamName,
+            String model,
+            int year,
+            double batteryCapacityMJ,
+            double currentEnergyMJ,
+            double mguKPowerKw) {
+        this(
+                chassisId,
+                teamName,
+                model,
+                year,
+                batteryCapacityMJ,
+                currentEnergyMJ,
+                mguKPowerKw,
+                Clock.systemDefaultZone());
+    }
+
+    // The final base construction helper updates fields without publishing this instance.
+    @SuppressWarnings("this-escape")
+    public HybridRaceCar(
+            String chassisId,
+            String teamName,
+            String model,
+            int year,
+            double batteryCapacityMJ,
+            double currentEnergyMJ,
+            double mguKPowerKw,
+            Clock clock) {
+        super(chassisId, teamName, model, year, clock);
         if (!Double.isFinite(batteryCapacityMJ) || batteryCapacityMJ <= 0) {
             throw new IllegalArgumentException("Battery capacity must be finite and positive.");
         }
-        if (!Double.isFinite(currentEnergyMJ) || currentEnergyMJ < 0
+        if (!Double.isFinite(currentEnergyMJ)
+                || currentEnergyMJ < 0
                 || currentEnergyMJ > batteryCapacityMJ) {
             throw new IllegalArgumentException("Battery energy must be between zero and capacity.");
         }
@@ -37,6 +80,7 @@ public class HybridRaceCar extends F1Car {
         this.currentEnergyMJ = currentEnergyMJ;
         validatePower(mguKPowerKw);
         this.mguKPowerKw = mguKPowerKw;
+        completeCarConstruction(HybridRaceCar.class, "HYBRID");
     }
 
     public double getBatteryCapacityMJ() {
@@ -124,7 +168,8 @@ public class HybridRaceCar extends F1Car {
 
     private void requireUnmanagedLap() {
         if (getActiveStrategy() != null) {
-            throw new IllegalStateException("Complete the strategy through its managed lap workflow.");
+            throw new IllegalStateException(
+                    "Complete the strategy through its managed lap workflow.");
         }
     }
 
@@ -143,17 +188,24 @@ public class HybridRaceCar extends F1Car {
         double deployment = plan.getDeploymentMj() - deployedThisLapMJ;
         double recovery = plan.getRecoveryMj() - recoveredThisLapMJ;
         double finalCharge = currentEnergyMJ - deployment + recovery;
-        if (deployment < 0 || recovery < 0 || deployment > currentEnergyMJ
-                || !Double.isFinite(finalCharge) || finalCharge < 0 || finalCharge > batteryCapacityMJ
+        if (deployment < 0
+                || recovery < 0
+                || deployment > currentEnergyMJ
+                || !Double.isFinite(finalCharge)
+                || finalCharge < 0
+                || finalCharge > batteryCapacityMJ
                 || lapCompleted && (deployment != 0 || recovery != 0)) {
-            throw new IllegalStateException("Current lap energy cannot complete the approved strategy plan.");
+            throw new IllegalStateException(
+                    "Current lap energy cannot complete the approved strategy plan.");
         }
     }
 
     final void finishStrategyEnergy(HybridEnergyPlan plan) {
         validateStrategyEnergyCompletion(plan);
-        currentEnergyMJ = currentEnergyMJ - (plan.getDeploymentMj() - deployedThisLapMJ)
-                + (plan.getRecoveryMj() - recoveredThisLapMJ);
+        currentEnergyMJ =
+                currentEnergyMJ
+                        - (plan.getDeploymentMj() - deployedThisLapMJ)
+                        + (plan.getRecoveryMj() - recoveredThisLapMJ);
         deployedThisLapMJ = plan.getDeploymentMj();
         recoveredThisLapMJ = plan.getRecoveryMj();
         currentLapNumber = 0;
@@ -167,7 +219,8 @@ public class HybridRaceCar extends F1Car {
 
     public void resetEnergyState() {
         if (isSessionActive() || hasScheduledStrategy() || isPermanentlyDecommissioned()) {
-            throw new IllegalStateException("Energy state can only be reset on an idle, uncommitted car.");
+            throw new IllegalStateException(
+                    "Energy state can only be reset on an idle, uncommitted car.");
         }
         clearLapCounters();
         currentLapNumber = 0;
@@ -207,47 +260,75 @@ public class HybridRaceCar extends F1Car {
 
     @Override
     public double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather) {
-        double remainingDeployment = isSessionActive() && !lapCompleted
-                ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ : MAX_DEPLOYMENT_PER_LAP_MJ;
+        double remainingDeployment =
+                isSessionActive() && !lapCompleted
+                        ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ
+                        : MAX_DEPLOYMENT_PER_LAP_MJ;
         double usableEnergy = Math.min(currentEnergyMJ, remainingDeployment);
         return calculateLapTimeDelta(circuit, weather, usableEnergy);
     }
 
-    public double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather, double plannedDeploymentMj) {
+    public double calculateLapTimeDelta(
+            Circuit circuit, WeatherCondition weather, double plannedDeploymentMj) {
         double baseline = performanceBaseline(circuit, weather);
         validatePower(mguKPowerKw);
         if (!Double.isFinite(plannedDeploymentMj) || plannedDeploymentMj < 0) {
-            throw new IllegalArgumentException("Planned deployment must be finite and nonnegative.");
+            throw new IllegalArgumentException(
+                    "Planned deployment must be finite and nonnegative.");
         }
-        double remainingDeployment = isSessionActive() && !lapCompleted
-                ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ : MAX_DEPLOYMENT_PER_LAP_MJ;
+        double remainingDeployment =
+                isSessionActive() && !lapCompleted
+                        ? MAX_DEPLOYMENT_PER_LAP_MJ - deployedThisLapMJ
+                        : MAX_DEPLOYMENT_PER_LAP_MJ;
         if (plannedDeploymentMj > remainingDeployment) {
-            throw new RegulatoryViolationException("Planned deployment exceeds the remaining lap allowance.");
+            throw new RegulatoryViolationException(
+                    "Planned deployment exceeds the remaining lap allowance.");
         }
         if (plannedDeploymentMj > currentEnergyMJ) {
-            throw new IllegalArgumentException("Planned deployment exceeds current battery charge.");
+            throw new IllegalArgumentException(
+                    "Planned deployment exceeds current battery charge.");
         }
         double powerFraction = mguKPowerKw / MAX_MGU_K_POWER_KW;
         boolean wet = weather == WeatherCondition.RAIN || weather == WeatherCondition.WET;
         // Simplified simulation: positive deltas are slower than the circuit baseline.
-        double boostBenefit = plannedDeploymentMj / MAX_DEPLOYMENT_PER_LAP_MJ * powerFraction
-                * (circuit.hasLongStraights() ? 0.06 : 0.015) * (wet ? 0.25 : 1);
-        double fraction = weatherPenaltyFraction(weather) + aeroDeltaFraction(circuit, weather)
-                + (1 - powerFraction) * 0.025 - boostBenefit;
+        double boostBenefit =
+                plannedDeploymentMj
+                        / MAX_DEPLOYMENT_PER_LAP_MJ
+                        * powerFraction
+                        * (circuit.hasLongStraights() ? 0.06 : 0.015)
+                        * (wet ? 0.25 : 1);
+        double fraction =
+                weatherPenaltyFraction(weather)
+                        + aeroDeltaFraction(circuit, weather)
+                        + (1 - powerFraction) * 0.025
+                        - boostBenefit;
         return lapTimeDelta(baseline, fraction);
     }
 
     @Override
     public String getRegulatoryComplianceNotes() {
-        boolean withinLimits = mguKPowerKw <= MAX_MGU_K_POWER_KW
-                && currentEnergyMJ >= 0 && currentEnergyMJ <= batteryCapacityMJ
-                && deployedThisLapMJ <= MAX_DEPLOYMENT_PER_LAP_MJ
-                && recoveredThisLapMJ <= MAX_RECOVERY_PER_LAP_MJ;
-        return "Hybrid energy limits " + (withinLimits ? "satisfied" : "violated")
-                + "; MGU-K " + mguKPowerKw + "/350 kW; battery " + currentEnergyMJ
-                + "/" + batteryCapacityMJ + " MJ; deployed " + deployedThisLapMJ
-                + "/4 MJ; recovered " + recoveredThisLapMJ + "/9 MJ this lap; specialist "
-                + (getAssignedEngineer() == null ? "required before race execution" : getAssignedEngineerId());
+        boolean withinLimits =
+                mguKPowerKw <= MAX_MGU_K_POWER_KW
+                        && currentEnergyMJ >= 0
+                        && currentEnergyMJ <= batteryCapacityMJ
+                        && deployedThisLapMJ <= MAX_DEPLOYMENT_PER_LAP_MJ
+                        && recoveredThisLapMJ <= MAX_RECOVERY_PER_LAP_MJ;
+        return "Hybrid energy limits "
+                + (withinLimits ? "satisfied" : "violated")
+                + "; MGU-K "
+                + mguKPowerKw
+                + "/350 kW; battery "
+                + currentEnergyMJ
+                + "/"
+                + batteryCapacityMJ
+                + " MJ; deployed "
+                + deployedThisLapMJ
+                + "/4 MJ; recovered "
+                + recoveredThisLapMJ
+                + "/9 MJ this lap; specialist "
+                + (getAssignedEngineer() == null
+                        ? "required before race execution"
+                        : getAssignedEngineerId());
     }
 
     public String getAssignedEngineerId() {
@@ -268,7 +349,8 @@ public class HybridRaceCar extends F1Car {
 
     public void releaseSpecialist() {
         if (isSessionActive() || hasScheduledStrategy()) {
-            throw new IllegalStateException("Complete or cancel the commitment before releasing the specialist.");
+            throw new IllegalStateException(
+                    "Complete or cancel the commitment before releasing the specialist.");
         }
         Engineer engineer = getAssignedEngineer();
         if (engineer == null) {
@@ -289,9 +371,11 @@ public class HybridRaceCar extends F1Car {
         }
         requireHybridChangesAllowed();
         Engineer engineer = getAssignedEngineer();
-        if (engineer == null || engineer.isAvailable()
+        if (engineer == null
+                || engineer.isAvailable()
                 || !getChassisId().equals(engineer.getAssignedChassisId())) {
-            throw new IllegalStateException("An assigned hybrid specialist must approve the upgrade.");
+            throw new IllegalStateException(
+                    "An assigned hybrid specialist must approve the upgrade.");
         }
         validatePower(upgrade.getPowerKw());
         mguKPowerKw = upgrade.getPowerKw();
@@ -301,9 +385,13 @@ public class HybridRaceCar extends F1Car {
     }
 
     private void requireHybridChangesAllowed() {
-        if (isSessionActive() || hasScheduledStrategy() || isPermanentlyDecommissioned()
-                || isDueForMaintenance() || !getOutOfServiceReason().isEmpty()) {
-            throw new IllegalStateException("Hybrid changes require an idle, serviceable, uncommitted car.");
+        if (isSessionActive()
+                || hasScheduledStrategy()
+                || isPermanentlyDecommissioned()
+                || isDueForMaintenance()
+                || !getOutOfServiceReason().isEmpty()) {
+            throw new IllegalStateException(
+                    "Hybrid changes require an idle, serviceable, uncommitted car.");
         }
     }
 

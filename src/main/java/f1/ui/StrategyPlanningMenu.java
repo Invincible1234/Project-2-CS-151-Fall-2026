@@ -5,10 +5,13 @@ import f1.model.Engineer;
 import f1.model.F1Car;
 import f1.model.RaceStrategy;
 import f1.model.Team;
-import java.util.List;
+
 import model.TireCompound;
 import model.WeatherCondition;
+
 import util.PartsCatalog;
+
+import java.util.List;
 
 final class StrategyPlanningMenu {
     private final ConsoleInput input;
@@ -31,14 +34,25 @@ final class StrategyPlanningMenu {
 
     void edit(RaceStrategy strategy, int action) {
         switch (action) {
-            case 2 -> strategy.adjustForWeather(input.choice("Expected weather", WeatherCondition.class));
-            case 3 -> strategy.selectTireCompound(input.choice("Tire compound", TireCompound.class));
+            case 2 ->
+                    strategy.adjustForWeather(
+                            input.choice("Expected weather", WeatherCondition.class));
+            case 3 ->
+                    strategy.selectTireCompound(input.choice("Tire compound", TireCompound.class));
             case 4 -> strategy.addEnergyPlan(input.text("Energy plan DEPLOY=<MJ>;RECOVER=<MJ>"));
             case 5 -> {
-                String part = input.select("Required part", List.copyOf(PartsCatalog.getPrices().keySet()), value -> value);
-                strategy.addRequiredParts(part, input.integer("Required quantity", 1, Integer.MAX_VALUE));
+                String part =
+                        input.select(
+                                "Required part",
+                                List.copyOf(PartsCatalog.getPrices().keySet()),
+                                value -> value);
+                strategy.addRequiredParts(
+                        part, input.integer("Required quantity", 1, Integer.MAX_VALUE));
             }
-            case 6 -> input.show("Estimated lap delta (seconds): " + strategy.finalizeLapTimeImpact(strategy.getCircuit()));
+            case 6 ->
+                    input.show(
+                            "Estimated lap delta (seconds): "
+                                    + strategy.finalizeLapTimeImpact(strategy.getCircuit()));
             default -> throw new IllegalArgumentException("Unknown planning action.");
         }
         input.show("Strategy updated: " + strategy.getStrategyId());

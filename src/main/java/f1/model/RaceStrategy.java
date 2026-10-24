@@ -2,17 +2,20 @@ package f1.model;
 
 import exception.InvalidStrategyException;
 import exception.RegulatoryViolationException;
+
+import model.StrategyStatus;
+import model.TireCompound;
+import model.WeatherCondition;
+
+import util.InstanceLimit;
+import util.PartsCatalog;
+import util.Validation;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import model.StrategyStatus;
-import model.TireCompound;
-import model.WeatherCondition;
-import util.InstanceLimit;
-import util.PartsCatalog;
-import util.Validation;
 
 public final class RaceStrategy {
     private final String strategyId;
@@ -148,7 +151,8 @@ public final class RaceStrategy {
         String part = PartsCatalog.normalizePartType(partType);
         int current = requiredParts.getOrDefault(part, 0);
         if (quantity <= 0 || quantity > Integer.MAX_VALUE - current) {
-            throw new IllegalArgumentException("Required part quantity must be positive and fit the supported range.");
+            throw new IllegalArgumentException(
+                    "Required part quantity must be positive and fit the supported range.");
         }
         requiredParts.put(part, current + quantity);
         if (current == 0) {
@@ -191,11 +195,15 @@ public final class RaceStrategy {
         double distanceKm = circuit.getLengthKm();
         car.validateStrategyCompletion(this, distanceKm);
         Driver driver = car.getAssignedDriver();
-        if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam
-                || driver == null || driver != raceDriver || !driver.getAssignedChassisIds().contains(chassisId)
+        if (registeredTeam == null
+                || car.getRegisteredTeam() != registeredTeam
+                || driver == null
+                || driver != raceDriver
+                || !driver.getAssignedChassisIds().contains(chassisId)
                 || car.getAssignedEngineer() != engineer
                 || !chassisId.equals(engineer.getAssignedChassisId())) {
-            throw new InvalidStrategyException("Repair strategy ownership and assignments before completion.");
+            throw new InvalidStrategyException(
+                    "Repair strategy ownership and assignments before completion.");
         }
         registeredTeam.validateReservedParts(this);
         if (car instanceof HybridRaceCar hybrid) {
@@ -211,18 +219,25 @@ public final class RaceStrategy {
     }
 
     public void cancelStrategy(String reason) {
-        if (status != StrategyStatus.DRAFT && status != StrategyStatus.READY && status != StrategyStatus.ACTIVE) {
-            throw new InvalidStrategyException("Only a draft, ready, or active strategy can be cancelled.");
+        if (status != StrategyStatus.DRAFT
+                && status != StrategyStatus.READY
+                && status != StrategyStatus.ACTIVE) {
+            throw new InvalidStrategyException(
+                    "Only a draft, ready, or active strategy can be cancelled.");
         }
         String validatedReason = Validation.requireText(reason, "Cancellation reason");
         if (status == StrategyStatus.ACTIVE) {
             Driver driver = car.getAssignedDriver();
-            if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam
-                    || car.getActiveStrategy() != this || !car.isSessionActive()
-                    || driver == null || !driver.getAssignedChassisIds().contains(chassisId)
+            if (registeredTeam == null
+                    || car.getRegisteredTeam() != registeredTeam
+                    || car.getActiveStrategy() != this
+                    || !car.isSessionActive()
+                    || driver == null
+                    || !driver.getAssignedChassisIds().contains(chassisId)
                     || car.getAssignedEngineer() != engineer
                     || !chassisId.equals(engineer.getAssignedChassisId())) {
-                throw new InvalidStrategyException("Repair strategy ownership and assignments before cancellation.");
+                throw new InvalidStrategyException(
+                        "Repair strategy ownership and assignments before cancellation.");
             }
             car.cancelStrategySession(this);
             registeredTeam.releaseStrategyResources(this);
@@ -241,14 +256,17 @@ public final class RaceStrategy {
         if (!(car instanceof HybridRaceCar hybrid)) {
             return 0;
         }
-        double recommendation = switch (expectedWeather) {
-            case CLEAR, CLOUDY -> 4.0;
-            case RAIN -> 1.0;
-            case WET -> 0.5;
-            case EXTREME_HEAT -> 2.0;
-        };
-        double remainingDeployment = hybrid.isSessionActive() && !hybrid.isLapCompleted()
-                ? Math.max(0, 4.0 - hybrid.getDeployedThisLapMJ()) : 4.0;
+        double recommendation =
+                switch (expectedWeather) {
+                    case CLEAR, CLOUDY -> 4.0;
+                    case RAIN -> 1.0;
+                    case WET -> 0.5;
+                    case EXTREME_HEAT -> 2.0;
+                };
+        double remainingDeployment =
+                hybrid.isSessionActive() && !hybrid.isLapCompleted()
+                        ? Math.max(0, 4.0 - hybrid.getDeployedThisLapMJ())
+                        : 4.0;
         return Math.min(recommendation, Math.min(remainingDeployment, hybrid.getCurrentEnergyMJ()));
     }
 
@@ -266,12 +284,13 @@ public final class RaceStrategy {
         if (weather == null) {
             throw new IllegalArgumentException("Weather is required.");
         }
-        TireCompound recommendedTires = switch (weather) {
-            case CLEAR, CLOUDY -> TireCompound.MEDIUM;
-            case RAIN -> TireCompound.INTERMEDIATE;
-            case WET -> TireCompound.WET;
-            case EXTREME_HEAT -> TireCompound.HARD;
-        };
+        TireCompound recommendedTires =
+                switch (weather) {
+                    case CLEAR, CLOUDY -> TireCompound.MEDIUM;
+                    case RAIN -> TireCompound.INTERMEDIATE;
+                    case WET -> TireCompound.WET;
+                    case EXTREME_HEAT -> TireCompound.HARD;
+                };
         if (expectedWeather != weather || tireCompound != recommendedTires) {
             expectedWeather = weather;
             tireCompound = recommendedTires;
@@ -299,53 +318,91 @@ public final class RaceStrategy {
         double carDelta;
         if (car instanceof HybridRaceCar hybrid && hybridEnergyPlan != null) {
             validateEnergyPlan(hybridEnergyPlan, hybrid);
-            carDelta = hybrid.calculateLapTimeDelta(circuit, expectedWeather, hybridEnergyPlan.getDeploymentMj());
+            carDelta =
+                    hybrid.calculateLapTimeDelta(
+                            circuit, expectedWeather, hybridEnergyPlan.getDeploymentMj());
         } else {
             carDelta = car.calculateLapTimeDelta(circuit, expectedWeather);
         }
-        double tireFraction = switch (tireCompound) {
-            case SOFT -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.03 : -0.015;
-            case MEDIUM -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.01 : 0;
-            case HARD -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0 : 0.01;
-            case INTERMEDIATE -> 0;
-            case WET -> expectedWeather == WeatherCondition.RAIN ? 0.02 : 0;
-        };
+        double tireFraction =
+                switch (tireCompound) {
+                    case SOFT -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.03 : -0.015;
+                    case MEDIUM -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0.01 : 0;
+                    case HARD -> expectedWeather == WeatherCondition.EXTREME_HEAT ? 0 : 0.01;
+                    case INTERMEDIATE -> 0;
+                    case WET -> expectedWeather == WeatherCondition.RAIN ? 0.02 : 0;
+                };
         double delta = carDelta + baseline * tireFraction;
         double projectedLapTime = baseline + delta;
-        if (!Double.isFinite(carDelta) || !Double.isFinite(delta)
-                || !Double.isFinite(projectedLapTime) || projectedLapTime <= 0) {
+        if (!Double.isFinite(carDelta)
+                || !Double.isFinite(delta)
+                || !Double.isFinite(projectedLapTime)
+                || projectedLapTime <= 0) {
             throw new InvalidStrategyException("Estimated lap time must be finite and positive.");
         }
         return delta;
     }
 
-    private double validateReadiness() {
-        if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam) {
-            throw new InvalidStrategyException("Register the strategy and its car with the same team.");
+    final boolean completeEngineerSetup() {
+        requireEditableDraft();
+        double estimate = validateReadiness(false);
+        if (!car.isRaceReady() && !car.prepareForSession(SessionType.RACE)) {
+            return false;
         }
-        if (!car.isAvailableForRace() || car.getPreparedSessionType() != SessionType.RACE
-                || car.hasScheduledStrategy()) {
+        estimatedLapTimeDelta = estimate;
+        lapTimeEstimateFinalized = true;
+        return true;
+    }
+
+    private double validateReadiness() {
+        return validateReadiness(true);
+    }
+
+    private double validateReadiness(boolean requirePrepared) {
+        if (registeredTeam == null || car.getRegisteredTeam() != registeredTeam) {
+            throw new InvalidStrategyException(
+                    "Register the strategy and its car with the same team.");
+        }
+        if (car.isSessionActive()
+                || car.hasScheduledStrategy()
+                || car.isPermanentlyDecommissioned()
+                || car.isDueForMaintenance()
+                || !car.getOutOfServiceReason().isEmpty()
+                || (requirePrepared
+                        && (!car.isAvailableForRace()
+                                || car.getPreparedSessionType() != SessionType.RACE))
+                || (!requirePrepared
+                        && car.isRaceReady()
+                        && car.getPreparedSessionType() != SessionType.RACE)) {
             throw new InvalidStrategyException("Prepare an available, uncommitted car for a race.");
         }
         Driver driver = car.getAssignedDriver();
-        if (driver == null || !driver.isEligibleForAssignment()
+        if (driver == null
+                || !driver.isEligibleForAssignment()
                 || !driver.getAssignedChassisIds().contains(chassisId)) {
             throw new InvalidStrategyException("An eligible driver must be assigned to this car.");
         }
         driver.requireReleasableAssignments();
-        if (car.getAssignedEngineer() != engineer || engineer.isAvailable()
-                || !chassisId.equals(engineer.getAssignedChassisId()) || !engineer.isQualifiedFor(car)) {
-            throw new InvalidStrategyException("A qualified engineer must be assigned to this car.");
+        if (car.getAssignedEngineer() != engineer
+                || engineer.isAvailable()
+                || !chassisId.equals(engineer.getAssignedChassisId())
+                || !engineer.isQualifiedFor(car)) {
+            throw new InvalidStrategyException(
+                    "A qualified engineer must be assigned to this car.");
         }
         if (expectedWeather != circuit.getTypicalWeather()) {
-            throw new InvalidStrategyException("Update the strategy for the circuit's current weather.");
+            throw new InvalidStrategyException(
+                    "Update the strategy for the circuit's current weather.");
         }
-        if (!lapTimeEstimateFinalized || requiredParts.getOrDefault("TIRES", 0) < 1) {
-            throw new InvalidStrategyException("Finalize the lap estimate and add required tires before readiness.");
+        if ((requirePrepared && !lapTimeEstimateFinalized)
+                || requiredParts.getOrDefault("TIRES", 0) < 1) {
+            throw new InvalidStrategyException(
+                    "Finalize the lap estimate and add required tires before readiness.");
         }
         if (car instanceof HybridRaceCar hybrid) {
             if (hybridEnergyPlan == null) {
-                throw new InvalidStrategyException("A hybrid strategy requires a validated energy plan.");
+                throw new InvalidStrategyException(
+                        "A hybrid strategy requires a validated energy plan.");
             }
             validateEnergyPlan(hybridEnergyPlan, hybrid);
         }
@@ -359,44 +416,57 @@ public final class RaceStrategy {
     }
 
     private static void validateEnergyPlan(HybridEnergyPlan plan, HybridRaceCar hybrid) {
-        if (!Double.isFinite(hybrid.getMguKPowerKw()) || hybrid.getMguKPowerKw() <= 0
+        if (!Double.isFinite(hybrid.getMguKPowerKw())
+                || hybrid.getMguKPowerKw() <= 0
                 || hybrid.getMguKPowerKw() > 350.0) {
-            throw new RegulatoryViolationException("Hybrid power must be positive and at most 350 kW.");
+            throw new RegulatoryViolationException(
+                    "Hybrid power must be positive and at most 350 kW.");
         }
         boolean currentLap = hybrid.isSessionActive() && !hybrid.isLapCompleted();
         double deployed = currentLap ? hybrid.getDeployedThisLapMJ() : 0;
         double recovered = currentLap ? hybrid.getRecoveredThisLapMJ() : 0;
         if (plan.getDeploymentMj() > 4.0 - deployed || plan.getRecoveryMj() > 9.0 - recovered) {
-            throw new RegulatoryViolationException("Energy plan exceeds the remaining lap allowances.");
+            throw new RegulatoryViolationException(
+                    "Energy plan exceeds the remaining lap allowances.");
         }
         double charge = hybrid.getCurrentEnergyMJ();
         if (plan.getDeploymentMj() > charge) {
-            throw new InvalidStrategyException("Planned deployment exceeds current battery charge.");
+            throw new InvalidStrategyException(
+                    "Planned deployment exceeds current battery charge.");
         }
         double finalCharge = charge - plan.getDeploymentMj() + plan.getRecoveryMj();
-        if (!Double.isFinite(finalCharge) || finalCharge < 0 || finalCharge > hybrid.getBatteryCapacityMJ()) {
+        if (!Double.isFinite(finalCharge)
+                || finalCharge < 0
+                || finalCharge > hybrid.getBatteryCapacityMJ()) {
             throw new InvalidStrategyException("Energy plan would exceed the battery capacity.");
         }
     }
 
     private void requireEditableDraft() {
         if (status != StrategyStatus.DRAFT) {
-            throw new InvalidStrategyException("Only a draft strategy can change planning decisions.");
+            throw new InvalidStrategyException(
+                    "Only a draft strategy can change planning decisions.");
         }
     }
 
     private static void requireCompatibleTires(TireCompound compound, WeatherCondition weather) {
         if (compound == null) {
-            throw new InvalidStrategyException("Select a tire compound before finalizing the strategy.");
+            throw new InvalidStrategyException(
+                    "Select a tire compound before finalizing the strategy.");
         }
-        boolean compatible = switch (weather) {
-            case CLEAR, CLOUDY, EXTREME_HEAT -> compound == TireCompound.SOFT
-                    || compound == TireCompound.MEDIUM || compound == TireCompound.HARD;
-            case RAIN -> compound == TireCompound.INTERMEDIATE || compound == TireCompound.WET;
-            case WET -> compound == TireCompound.WET;
-        };
+        boolean compatible =
+                switch (weather) {
+                    case CLEAR, CLOUDY, EXTREME_HEAT ->
+                            compound == TireCompound.SOFT
+                                    || compound == TireCompound.MEDIUM
+                                    || compound == TireCompound.HARD;
+                    case RAIN ->
+                            compound == TireCompound.INTERMEDIATE || compound == TireCompound.WET;
+                    case WET -> compound == TireCompound.WET;
+                };
         if (!compatible) {
-            throw new InvalidStrategyException("Tire compound is incompatible with the expected weather.");
+            throw new InvalidStrategyException(
+                    "Tire compound is incompatible with the expected weather.");
         }
     }
 
@@ -417,8 +487,10 @@ public final class RaceStrategy {
 
     @Override
     public boolean equals(Object other) {
-        return this == other || other instanceof RaceStrategy strategy
-                && strategyId.equals(strategy.strategyId) && chassisId.equals(strategy.chassisId);
+        return this == other
+                || other instanceof RaceStrategy strategy
+                        && strategyId.equals(strategy.strategyId)
+                        && chassisId.equals(strategy.chassisId);
     }
 
     @Override
@@ -428,8 +500,16 @@ public final class RaceStrategy {
 
     @Override
     public String toString() {
-        return "RaceStrategy{strategyId='" + strategyId + "', chassisId='" + chassisId
-                + "', engineerId='" + engineerId + "', circuitId='" + circuit.getCircuitId()
-                + "', status=" + status + "}";
+        return "RaceStrategy{strategyId='"
+                + strategyId
+                + "', chassisId='"
+                + chassisId
+                + "', engineerId='"
+                + engineerId
+                + "', circuitId='"
+                + circuit.getCircuitId()
+                + "', status="
+                + status
+                + "}";
     }
 }

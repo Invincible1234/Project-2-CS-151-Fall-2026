@@ -1,8 +1,10 @@
 package f1.model;
 
-import java.time.Clock;
-import java.util.Locale;
 import model.WeatherCondition;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.Locale;
 
 public class ClassicRaceCar extends F1Car {
     private int originalityScore;
@@ -13,20 +15,43 @@ public class ClassicRaceCar extends F1Car {
     private boolean preservationModeEnabled;
     private String ownershipRecord;
 
-    public ClassicRaceCar(String chassisId, String teamName, String model, int year,
-            int originalityScore, int restorationYear, double powerLimitKw) {
-        this(chassisId, teamName, model, year, originalityScore, restorationYear,
-                powerLimitKw, Clock.systemDefaultZone());
+    public ClassicRaceCar(
+            String chassisId,
+            String teamName,
+            String model,
+            int year,
+            int originalityScore,
+            int restorationYear,
+            double powerLimitKw) {
+        this(
+                chassisId,
+                teamName,
+                model,
+                year,
+                originalityScore,
+                restorationYear,
+                powerLimitKw,
+                Clock.systemDefaultZone());
     }
 
-    protected ClassicRaceCar(String chassisId, String teamName, String model, int year,
-            int originalityScore, int restorationYear, double powerLimitKw, Clock clock) {
+    // The final base construction helper updates fields without publishing this instance.
+    @SuppressWarnings("this-escape")
+    public ClassicRaceCar(
+            String chassisId,
+            String teamName,
+            String model,
+            int year,
+            int originalityScore,
+            int restorationYear,
+            double powerLimitKw,
+            Clock clock) {
         super(chassisId, teamName, model, year, clock);
         if (originalityScore < 0 || originalityScore > 100) {
             throw new IllegalArgumentException("Originality score must be between zero and 100.");
         }
-        if (restorationYear < year || restorationYear > currentDate().getYear()) {
-            throw new IllegalArgumentException("Completed restoration year must be between the car's year and today.");
+        if (restorationYear < year || restorationYear > LocalDate.now(clock).getYear()) {
+            throw new IllegalArgumentException(
+                    "Completed restoration year must be between the car's year and today.");
         }
         if (!Double.isFinite(powerLimitKw) || powerLimitKw <= 0) {
             throw new IllegalArgumentException("Power limit must be finite and positive.");
@@ -34,7 +59,8 @@ public class ClassicRaceCar extends F1Car {
         this.originalityScore = originalityScore;
         this.restorationYear = restorationYear;
         this.powerLimitKw = powerLimitKw;
-        this.ownershipRecord = getTeamName();
+        this.ownershipRecord = teamName.trim();
+        completeCarConstruction(ClassicRaceCar.class, "CLASSIC");
     }
 
     public int getOriginalityScore() {
@@ -62,26 +88,37 @@ public class ClassicRaceCar extends F1Car {
         double baseline = performanceBaseline(circuit, weather);
         double powerPenalty = 0.18 * (300.0 / (300.0 + powerLimitKw));
         double authenticityPenalty = (100 - originalityScore) / 100.0 * 0.03;
-        double fraction = weatherPenaltyFraction(weather) * 1.25
-                + aeroDeltaFraction(circuit, weather) + powerPenalty + authenticityPenalty
-                + (preservationModeEnabled ? 0.04 : 0);
+        double fraction =
+                weatherPenaltyFraction(weather) * 1.25
+                        + aeroDeltaFraction(circuit, weather)
+                        + powerPenalty
+                        + authenticityPenalty
+                        + (preservationModeEnabled ? 0.04 : 0);
         return lapTimeDelta(baseline, fraction);
     }
 
     @Override
     public String getRegulatoryComplianceNotes() {
-        return "Classic car; originality " + originalityScore + "/100; power limit "
-                + powerLimitKw + " kW; hybrid energy deployment prohibited; "
-                + (preservationModeEnabled ? "preservation: practice demonstrations only" : "standard classic operation")
+        return "Classic car; originality "
+                + originalityScore
+                + "/100; power limit "
+                + powerLimitKw
+                + " kW; hybrid energy deployment prohibited; "
+                + (preservationModeEnabled
+                        ? "preservation: practice demonstrations only"
+                        : "standard classic operation")
                 + (restorationInProgress ? "; unavailable during restoration" : "")
                 + (isPermanentlyDecommissioned() ? "; permanently decommissioned" : "");
     }
 
     public void applyPreservationMode() {
         requireIdleClassicCar();
-        if (preservationModeEnabled || restorationInProgress || isDueForMaintenance()
+        if (preservationModeEnabled
+                || restorationInProgress
+                || isDueForMaintenance()
                 || !getOutOfServiceReason().isEmpty()) {
-            throw new IllegalStateException("Preservation mode requires a serviceable car not already in that mode.");
+            throw new IllegalStateException(
+                    "Preservation mode requires a serviceable car not already in that mode.");
         }
         double reducedPower = powerLimitKw / 2;
         if (reducedPower <= 0) {
@@ -102,6 +139,10 @@ public class ClassicRaceCar extends F1Car {
         if (name.equals(getTeamName())) {
             throw new IllegalArgumentException("Choose a different owner.");
         }
+        Team source = getRegisteredTeam();
+        if (source != null) {
+            source.removeCar(this);
+        }
         changeUnregisteredTeamName(name);
         ownershipRecord += " -> " + name;
         invalidatePreparation();
@@ -112,7 +153,8 @@ public class ClassicRaceCar extends F1Car {
         requireTransferable();
         Team source = getRegisteredTeam();
         if (source == null) {
-            throw new IllegalStateException("Register the car with its source team before a team-to-team transfer.");
+            throw new IllegalStateException(
+                    "Register the car with its source team before a team-to-team transfer.");
         }
         source.transferClassicCar(this, destination);
         ownershipRecord += " -> " + destination.getName();
@@ -138,7 +180,8 @@ public class ClassicRaceCar extends F1Car {
     public void updateOriginalityScore(int delta) {
         requireIdleClassicCar();
         if (restorationInProgress) {
-            throw new IllegalStateException("Record originality changes when completing restoration.");
+            throw new IllegalStateException(
+                    "Record originality changes when completing restoration.");
         }
         int updatedScore = validateOriginalityChange(delta);
         originalityScore = updatedScore;
@@ -151,7 +194,8 @@ public class ClassicRaceCar extends F1Car {
             throw new IllegalStateException("A restoration is already scheduled.");
         }
         if (year < currentDate().getYear() || year < restorationYear || year > 9999) {
-            throw new IllegalArgumentException("Schedule restoration for the current year or a later year through 9999.");
+            throw new IllegalArgumentException(
+                    "Schedule restoration for the current year or a later year through 9999.");
         }
         markOutOfService("Restoration scheduled for " + year);
         scheduledRestorationYear = year;
@@ -179,7 +223,8 @@ public class ClassicRaceCar extends F1Car {
     @Override
     public void performService(String notes) {
         if (restorationInProgress) {
-            throw new IllegalStateException("Complete the restoration before returning to ordinary servicing.");
+            throw new IllegalStateException(
+                    "Complete the restoration before returning to ordinary servicing.");
         }
         super.performService(notes);
     }
@@ -203,16 +248,19 @@ public class ClassicRaceCar extends F1Car {
     @Override
     public void scheduleStrategy(String strategy) {
         if (restorationInProgress || preservationModeEnabled) {
-            throw new IllegalStateException("Cannot schedule a race strategy during restoration or preservation.");
+            throw new IllegalStateException(
+                    "Cannot schedule a race strategy during restoration or preservation.");
         }
         super.scheduleStrategy(strategy);
     }
 
     @Override
     public void applyAeroUpgrade(String upgrade) {
-        if (preservationModeEnabled && upgrade != null
+        if (preservationModeEnabled
+                && upgrade != null
                 && !"BALANCED".equals(upgrade.strip().toUpperCase(Locale.ROOT))) {
-            throw new IllegalStateException("Preserved classic cars require BALANCED aerodynamics.");
+            throw new IllegalStateException(
+                    "Preserved classic cars require BALANCED aerodynamics.");
         }
         super.applyAeroUpgrade(upgrade);
     }
@@ -220,21 +268,24 @@ public class ClassicRaceCar extends F1Car {
     private void requireTransferable() {
         requireIdleClassicCar();
         if (restorationInProgress || hasActiveAssignments() || originalityScore == 0) {
-            throw new IllegalStateException("Transfers require verified originality and no restoration or assignments.");
+            throw new IllegalStateException(
+                    "Transfers require verified originality and no restoration or assignments.");
         }
     }
 
     private int validateOriginalityChange(int delta) {
         long updatedScore = (long) originalityScore + delta;
         if (updatedScore < 0 || updatedScore > 100) {
-            throw new IllegalArgumentException("Originality score must remain between zero and 100.");
+            throw new IllegalArgumentException(
+                    "Originality score must remain between zero and 100.");
         }
         return (int) updatedScore;
     }
 
     private void requireIdleClassicCar() {
         if (isSessionActive() || hasScheduledStrategy() || isPermanentlyDecommissioned()) {
-            throw new IllegalStateException("Classic car changes require an idle, uncommitted car that is not retired.");
+            throw new IllegalStateException(
+                    "Classic car changes require an idle, uncommitted car that is not retired.");
         }
     }
 }

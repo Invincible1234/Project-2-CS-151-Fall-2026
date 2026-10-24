@@ -1,10 +1,14 @@
 package f1.model;
 
+import model.WeatherCondition;
+
+import util.InstanceLimit;
+import util.Validation;
+
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Objects;
-import model.WeatherCondition;
 
 public abstract class F1Car implements Raceable {
     public abstract double calculateLapTimeDelta(Circuit circuit, WeatherCondition weather);
@@ -30,7 +34,6 @@ public abstract class F1Car implements Raceable {
     private String powerUnitType;
     private AeroConfiguration currentAeroConfig;
     private boolean permanentlyDecommissioned;
-    private String scheduledStrategy;
     private RaceStrategy activeStrategy;
     private Driver assignedDriver;
     private Engineer assignedEngineer;
@@ -45,7 +48,8 @@ public abstract class F1Car implements Raceable {
             throw new IllegalArgumentException("Chassis ID, team, and model are required.");
         }
         if (chassisId.isBlank() || teamName.isBlank() || model.isBlank() || year < 1950) {
-            throw new IllegalArgumentException("Names must be nonblank and year must be at least 1950.");
+            throw new IllegalArgumentException(
+                    "Names must be nonblank and year must be at least 1950.");
         }
         this.chassisId = chassisId.trim();
         this.teamName = teamName.trim();
@@ -54,7 +58,49 @@ public abstract class F1Car implements Raceable {
         this.lastSetupDate = "";
         this.powerUnitType = "";
         this.permanentlyDecommissioned = false;
-        this.scheduledStrategy = "";
+    }
+
+    protected final void completeCarConstruction(Class<? extends F1Car> type, String unitType) {
+        String validated = Validation.requireText(unitType, "Power unit type");
+        if (!powerUnitType.isEmpty()) {
+            throw new IllegalStateException("Car construction has already been completed.");
+        }
+        InstanceLimit.checkAndCount(type);
+        powerUnitType = validated;
+    }
+
+    @Override
+    public final boolean equals(Object other) {
+        return this == other || other instanceof F1Car car && chassisId.equals(car.chassisId);
+    }
+
+    @Override
+    public final int hashCode() {
+        return chassisId.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName()
+                + "{chassisId='"
+                + chassisId
+                + "', team='"
+                + teamName
+                + "', model='"
+                + model
+                + "', year="
+                + year
+                + ", powerUnit='"
+                + powerUnitType
+                + "', mileageKm="
+                + totalMileage
+                + ", ready="
+                + raceReady
+                + ", active="
+                + sessionActive
+                + ", retired="
+                + permanentlyDecommissioned
+                + "}";
     }
 
     public String getChassisId() {
@@ -81,7 +127,8 @@ public abstract class F1Car implements Raceable {
 
     protected final void changeUnregisteredTeamName(String newTeam) {
         if (registeredTeam != null) {
-            throw new IllegalStateException("Transfer a registered car using the destination Team object.");
+            throw new IllegalStateException(
+                    "Transfer a registered car using the destination Team object.");
         }
         teamName = newTeam;
     }
@@ -168,8 +215,9 @@ public abstract class F1Car implements Raceable {
         if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("An out-of-service reason is required.");
         }
-        if (sessionActive || permanentlyDecommissioned) {
-            throw new IllegalStateException("Cannot change service status during a session or after retirement.");
+        if (sessionActive || hasScheduledStrategy() || permanentlyDecommissioned) {
+            throw new IllegalStateException(
+                    "Cannot change service status during a session or after retirement.");
         }
         outOfServiceReason = reason.trim();
         raceReady = false;
@@ -180,7 +228,7 @@ public abstract class F1Car implements Raceable {
         if (notes == null || notes.isBlank()) {
             throw new IllegalArgumentException("Service notes are required.");
         }
-        if (sessionActive || permanentlyDecommissioned) {
+        if (sessionActive || hasScheduledStrategy() || permanentlyDecommissioned) {
             throw new IllegalStateException("Cannot service an active or decommissioned car.");
         }
         String serviceDate = LocalDate.now(clock).toString();
@@ -197,8 +245,22 @@ public abstract class F1Car implements Raceable {
         if (sessionType == null) {
             throw new IllegalArgumentException("Session type is required.");
         }
-        if (permanentlyDecommissioned || sessionActive || raceReady
-                || !outOfServiceReason.isEmpty() || isDueForMaintenance()) {
+        if (permanentlyDecommissioned
+                || sessionActive
+                || hasScheduledStrategy()
+                || raceReady
+                || !outOfServiceReason.isEmpty()
+                || isDueForMaintenance()) {
+            return false;
+        }
+        if (sessionType == SessionType.RACE
+                && (assignedDriver == null
+                        || assignedEngineer == null
+                        || !assignedDriver.isEligibleForAssignment()
+                        || !assignedDriver.getAssignedChassisIds().contains(chassisId)
+                        || !chassisId.equals(assignedEngineer.getAssignedChassisId())
+                        || assignedEngineer.isAvailable()
+                        || !assignedEngineer.isQualifiedFor(this))) {
             return false;
         }
         String setupDate = LocalDate.now(clock).toString();
@@ -247,8 +309,10 @@ public abstract class F1Car implements Raceable {
             throw new IllegalStateException("End commitments before permanently retiring the car.");
         }
         if (assignedDriver != null && !assignedDriver.getAssignedChassisIds().contains(chassisId)
-                || assignedEngineer != null && !chassisId.equals(assignedEngineer.getAssignedChassisId())) {
-            throw new IllegalStateException("Repair inconsistent assignments before retiring the car.");
+                || assignedEngineer != null
+                        && !chassisId.equals(assignedEngineer.getAssignedChassisId())) {
+            throw new IllegalStateException(
+                    "Repair inconsistent assignments before retiring the car.");
         }
         if (assignedDriver != null) {
             assignedDriver.unassignFromCar(this);
@@ -263,8 +327,12 @@ public abstract class F1Car implements Raceable {
 
     @Override
     public boolean isAvailableForRace() {
-        return raceReady && !sessionActive && !permanentlyDecommissioned
-                && outOfServiceReason.isEmpty() && !isDueForMaintenance();
+        return raceReady
+                && !sessionActive
+                && !hasScheduledStrategy()
+                && !permanentlyDecommissioned
+                && outOfServiceReason.isEmpty()
+                && !isDueForMaintenance();
     }
 
     @Override
@@ -272,13 +340,15 @@ public abstract class F1Car implements Raceable {
         if (isDueForMaintenance()) {
             return "Maintenance required before the next session.";
         }
-        return "Maintenance interval: " + Math.max(0, MAINTENANCE_INTERVAL_KM - mileageSinceService)
+        return "Maintenance interval: "
+                + Math.max(0, MAINTENANCE_INTERVAL_KM - mileageSinceService)
                 + " km remaining.";
     }
 
     protected final double performanceBaseline(Circuit circuit, WeatherCondition weather) {
         if (circuit == null || weather == null) {
-            throw new IllegalArgumentException("Circuit and weather are required for performance estimates.");
+            throw new IllegalArgumentException(
+                    "Circuit and weather are required for performance estimates.");
         }
         if (permanentlyDecommissioned || isDueForMaintenance() || !outOfServiceReason.isEmpty()) {
             throw new IllegalStateException("Performance estimates require a serviceable car.");
@@ -309,8 +379,11 @@ public abstract class F1Car implements Raceable {
 
     protected static double lapTimeDelta(double baseline, double fraction) {
         double delta = baseline * fraction;
-        if (!Double.isFinite(delta) || !Double.isFinite(baseline + delta) || baseline + delta <= 0) {
-            throw new IllegalArgumentException("Circuit estimate exceeds the supported lap-time range.");
+        if (!Double.isFinite(delta)
+                || !Double.isFinite(baseline + delta)
+                || baseline + delta <= 0) {
+            throw new IllegalArgumentException(
+                    "Circuit estimate exceeds the supported lap-time range.");
         }
         return delta;
     }
@@ -323,13 +396,16 @@ public abstract class F1Car implements Raceable {
         try {
             configuration = AeroConfiguration.valueOf(upgrade.strip().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException error) {
-            throw new IllegalArgumentException(
-                    "Choose BALANCED, LOW_DRAG, or HIGH_DOWNFORCE.");
+            throw new IllegalArgumentException("Choose BALANCED, LOW_DRAG, or HIGH_DOWNFORCE.");
         }
-        if (sessionActive || hasScheduledStrategy() || permanentlyDecommissioned || isDueForMaintenance()
+        if (sessionActive
+                || hasScheduledStrategy()
+                || permanentlyDecommissioned
+                || isDueForMaintenance()
                 || !outOfServiceReason.isEmpty()) {
             throw new IllegalStateException(
-                    "Upgrades require an idle, serviceable, uncommitted car that has not been decommissioned.");
+                    "Upgrades require an idle, serviceable, uncommitted car that has not been"
+                            + " decommissioned.");
         }
         currentAeroConfig = configuration;
         raceReady = false;
@@ -337,7 +413,7 @@ public abstract class F1Car implements Raceable {
     }
 
     public String getScheduledStrategy() {
-        return activeStrategy == null ? scheduledStrategy : activeStrategy.getStrategyId();
+        return activeStrategy == null ? "" : activeStrategy.getStrategyId();
     }
 
     public RaceStrategy getActiveStrategy() {
@@ -357,7 +433,7 @@ public abstract class F1Car implements Raceable {
     }
 
     public boolean hasScheduledStrategy() {
-        return activeStrategy != null || scheduledStrategy != null && !scheduledStrategy.isBlank();
+        return activeStrategy != null;
     }
 
     public boolean scheduleStrategy(RaceStrategy strategy) {
@@ -381,7 +457,6 @@ public abstract class F1Car implements Raceable {
         }
         sessionActive = false;
         activeStrategy = null;
-        scheduledStrategy = "";
         invalidatePreparation();
         if (this instanceof HybridRaceCar hybrid) {
             hybrid.endCancelledStrategyLap();
@@ -392,12 +467,14 @@ public abstract class F1Car implements Raceable {
         if (activeStrategy != strategy || !sessionActive || strategy.getCar() != this) {
             throw new IllegalStateException("This strategy does not own an active car session.");
         }
-        if (!Double.isFinite(distanceKm) || distanceKm <= 0
+        if (!Double.isFinite(distanceKm)
+                || distanceKm <= 0
                 || !Double.isFinite(totalMileage + distanceKm)
                 || !Double.isFinite(mileageSinceService + distanceKm)
                 || totalMileage + distanceKm <= totalMileage
                 || mileageSinceService + distanceKm <= mileageSinceService) {
-            throw new IllegalArgumentException("Completed distance must fit the supported mileage range.");
+            throw new IllegalArgumentException(
+                    "Completed distance must fit the supported mileage range.");
         }
     }
 
@@ -407,7 +484,6 @@ public abstract class F1Car implements Raceable {
         mileageSinceService += distanceKm;
         sessionActive = false;
         activeStrategy = null;
-        scheduledStrategy = "";
         invalidatePreparation();
     }
 
@@ -422,7 +498,8 @@ public abstract class F1Car implements Raceable {
 
     void releaseDriver(Driver driver) {
         if (sessionActive || hasScheduledStrategy()) {
-            throw new IllegalStateException("Cannot release a driver during a session or scheduled strategy.");
+            throw new IllegalStateException(
+                    "Cannot release a driver during a session or scheduled strategy.");
         }
         if (assignedDriver != driver) {
             throw new IllegalStateException("Driver is not assigned to this car.");
@@ -434,7 +511,8 @@ public abstract class F1Car implements Raceable {
     void assignEngineer(Engineer engineer) {
         requireAssignable();
         if (engineer == null || assignedEngineer != null) {
-            throw new IllegalStateException("Car requires an engineer and must not already have one.");
+            throw new IllegalStateException(
+                    "Car requires an engineer and must not already have one.");
         }
         assignedEngineer = engineer;
         invalidatePreparation();
@@ -442,7 +520,8 @@ public abstract class F1Car implements Raceable {
 
     void releaseEngineer(Engineer engineer) {
         if (sessionActive || hasScheduledStrategy()) {
-            throw new IllegalStateException("Cannot release an engineer during a session or scheduled strategy.");
+            throw new IllegalStateException(
+                    "Cannot release an engineer during a session or scheduled strategy.");
         }
         if (assignedEngineer != engineer) {
             throw new IllegalStateException("Engineer is not assigned to this car.");
@@ -452,23 +531,36 @@ public abstract class F1Car implements Raceable {
     }
 
     private void requireAssignable() {
-        if (permanentlyDecommissioned || sessionActive || hasScheduledStrategy()
-                || isDueForMaintenance() || !outOfServiceReason.isEmpty()) {
-            throw new IllegalStateException("Assignments require an idle, serviceable, uncommitted car.");
+        if (permanentlyDecommissioned
+                || sessionActive
+                || hasScheduledStrategy()
+                || isDueForMaintenance()
+                || !outOfServiceReason.isEmpty()) {
+            throw new IllegalStateException(
+                    "Assignments require an idle, serviceable, uncommitted car.");
         }
     }
 
-    public void scheduleStrategy(String strategy) {
-        if (strategy == null || strategy.isBlank()) {
-            throw new IllegalArgumentException("Strategy is required.");
+    public void scheduleStrategy(String strategyId) {
+        String id = Validation.requireText(strategyId, "Strategy ID");
+        if (registeredTeam == null
+                || sessionActive
+                || permanentlyDecommissioned
+                || hasScheduledStrategy()) {
+            throw new IllegalStateException(
+                    "Start a registered strategy on an idle, available car.");
         }
-        if (permanentlyDecommissioned) {
-            throw new IllegalArgumentException("Cannot schedule strategy for decommissioned car.");
-        }
-        if (hasScheduledStrategy() || sessionActive) {
-            throw new IllegalStateException("Car already has a session or strategy commitment.");
-        }
-        this.scheduledStrategy = strategy.trim();
+        RaceStrategy strategy =
+                registeredTeam.getStrategies().stream()
+                        .filter(
+                                candidate ->
+                                        candidate.getCar() == this
+                                                && candidate.getStrategyId().equals(id))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "No registered strategy matches this car and ID."));
+        scheduleStrategy(strategy);
     }
-
 }

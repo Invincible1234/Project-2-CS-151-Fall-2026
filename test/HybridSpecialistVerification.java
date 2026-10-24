@@ -1,6 +1,7 @@
 package test;
 
 import exception.RegulatoryViolationException;
+
 import f1.model.Engineer;
 import f1.model.EngineerSpecialty;
 import f1.model.HybridRaceCar;
@@ -17,14 +18,20 @@ public class HybridSpecialistVerification {
 
     private static void verifyPower() {
         check(car("DEFAULT").getMguKPowerKw() == 300, "Default power is incorrect.");
-        check(new HybridRaceCar("LIMIT", "Team", "Hybrid", 2026, 4, 3, 350)
-                .getMguKPowerKw() == 350, "The maximum legal power was rejected.");
-        for (double invalid : new double[] {0, -1, Double.NaN,
-                Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY}) {
-            expect(IllegalArgumentException.class,
+        check(
+                new HybridRaceCar("LIMIT", "Team", "Hybrid", 2026, 4, 3, 350).getMguKPowerKw()
+                        == 350,
+                "The maximum legal power was rejected.");
+        for (double invalid :
+                new double[] {
+                    0, -1, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY
+                }) {
+            expect(
+                    IllegalArgumentException.class,
                     () -> new HybridRaceCar("BAD", "Team", "Hybrid", 2026, 4, 3, invalid));
         }
-        expect(RegulatoryViolationException.class,
+        expect(
+                RegulatoryViolationException.class,
                 () -> new HybridRaceCar("OVER", "Team", "Hybrid", 2026, 4, 3, 350.1));
     }
 
@@ -34,27 +41,34 @@ public class HybridSpecialistVerification {
         Engineer wrong = engineer("WRONG", EngineerSpecialty.CLASSIC_RESTORATION);
         expect(IllegalArgumentException.class, () -> car.lockForSpecialist(null));
         expect(IllegalArgumentException.class, () -> car.lockForSpecialist(wrong));
-        check(wrong.isAvailable() && car.getAssignedEngineer() == null,
+        check(
+                wrong.isAvailable() && car.getAssignedEngineer() == null,
                 "Rejected assignment changed either participant.");
         car.prepareForSession(SessionType.PRACTICE);
         check(car.lockForSpecialist(specialist), "Specialist assignment failed.");
-        check(car.getAssignedEngineer() == specialist && !specialist.isAvailable()
-                && car.getAssignedEngineerId().equals("E1")
-                && specialist.getAssignedChassisId().equals("ASSIGN"),
+        check(
+                car.getAssignedEngineer() == specialist
+                        && !specialist.isAvailable()
+                        && car.getAssignedEngineerId().equals("E1")
+                        && specialist.getAssignedChassisId().equals("ASSIGN"),
                 "Assignment was not synchronized.");
         check(!car.isRaceReady(), "Assignment did not invalidate preparation.");
         expect(IllegalStateException.class, () -> car.lockForSpecialist(specialist));
         expect(IllegalStateException.class, () -> car("OTHER").lockForSpecialist(specialist));
-        car.prepareForSession(SessionType.RACE);
+        car.prepareForSession(SessionType.PRACTICE);
         car.startSession();
         expect(IllegalStateException.class, car::releaseSpecialist);
         expect(IllegalStateException.class, specialist::releaseFromCar);
-        check(car.getAssignedEngineer() == specialist && !specialist.isAvailable(),
+        check(
+                car.getAssignedEngineer() == specialist && !specialist.isAvailable(),
                 "Rejected release changed assignment state.");
         car.completeSession();
         car.releaseSpecialist();
-        check(car.getAssignedEngineer() == null && car.getAssignedEngineerId().isEmpty()
-                && specialist.isAvailable() && specialist.getAssignedChassisId().isEmpty(),
+        check(
+                car.getAssignedEngineer() == null
+                        && car.getAssignedEngineerId().isEmpty()
+                        && specialist.isAvailable()
+                        && specialist.getAssignedChassisId().isEmpty(),
                 "Release did not clear both sides.");
         expect(IllegalStateException.class, car::releaseSpecialist);
 
@@ -66,7 +80,8 @@ public class HybridSpecialistVerification {
         expect(IllegalStateException.class, () -> car.lockForSpecialist(specialist));
         car.performService("Scheduled service");
         car.lockForSpecialist(specialist);
-        car.scheduleStrategy("Reserved strategy");
+        car.prepareForSession(SessionType.PRACTICE);
+        car.startSession();
         expect(IllegalStateException.class, car::releaseSpecialist);
         expect(IllegalStateException.class, () -> car.applyHybridUpgrade("PERFORMANCE"));
     }
@@ -83,24 +98,34 @@ public class HybridSpecialistVerification {
         car.completeSession();
         for (HybridUpgrade upgrade : HybridUpgrade.values()) {
             car.prepareForSession(SessionType.PRACTICE);
-            check(car.applyHybridUpgrade(" " + upgrade.name().toLowerCase(java.util.Locale.ROOT) + " "),
+            check(
+                    car.applyHybridUpgrade(
+                            " " + upgrade.name().toLowerCase(java.util.Locale.ROOT) + " "),
                     "Supported upgrade was rejected.");
-            check(car.getMguKPowerKw() == upgrade.getPowerKw()
-                    && car.getHybridUpgrade().equals(upgrade.name()), "Upgrade state is incorrect.");
-            check(!car.isRaceReady() && car.getPreparedSessionType() == null,
+            check(
+                    car.getMguKPowerKw() == upgrade.getPowerKw()
+                            && car.getHybridUpgrade().equals(upgrade.name()),
+                    "Upgrade state is incorrect.");
+            check(
+                    !car.isRaceReady() && car.getPreparedSessionType() == null,
                     "Upgrade did not invalidate setup.");
-            check(car.getCurrentEnergyMJ() == 3 && car.getDeployedThisLapMJ() == 1
-                    && car.getRecoveredThisLapMJ() == 1, "Upgrade reset energy or bypassed lap limits.");
+            check(
+                    car.getCurrentEnergyMJ() == 3
+                            && car.getDeployedThisLapMJ() == 1
+                            && car.getRecoveredThisLapMJ() == 1,
+                    "Upgrade reset energy or bypassed lap limits.");
         }
-        car.prepareForSession(SessionType.RACE);
+        car.prepareForSession(SessionType.PRACTICE);
         for (String invalid : new String[] {null, "", "  ", "UNKNOWN"}) {
             expect(IllegalArgumentException.class, () -> car.applyHybridUpgrade(invalid));
-            check(car.getMguKPowerKw() == 350 && car.isRaceReady(),
+            check(
+                    car.getMguKPowerKw() == 350 && car.isRaceReady(),
                     "Invalid upgrade changed power or setup.");
         }
         car.startSession();
         expect(IllegalStateException.class, () -> car.applyHybridUpgrade("EFFICIENCY"));
-        check(car.getMguKPowerKw() == 350 && car.isSessionActive(),
+        check(
+                car.getMguKPowerKw() == 350 && car.isSessionActive(),
                 "Upgrade interrupted an active session.");
         car.completeSession();
         car.markOutOfService("Electrical fault");

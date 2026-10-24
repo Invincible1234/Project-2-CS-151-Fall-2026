@@ -1,6 +1,7 @@
 package ui;
 
 import java.io.PrintStream;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
@@ -12,6 +13,18 @@ public final class ConsoleInput {
 
     public ConsoleInput(Readable source, PrintStream output) {
         this(new f1.ui.ConsoleInput(source, output));
+    }
+
+    public ConsoleInput(Readable source, PrintStream output, Clock clock) {
+        this(new f1.ui.ConsoleInput(source, output, clock));
+    }
+
+    public Clock clock() {
+        return shared.clock();
+    }
+
+    public LocalDate today() {
+        return shared.today();
     }
 
     public ConsoleInput(f1.ui.ConsoleInput shared) {
@@ -87,7 +100,7 @@ public final class ConsoleInput {
             String value = text(prompt + " [YYYY-MM-DD, today or earlier]");
             try {
                 LocalDate date = LocalDate.parse(value);
-                if (!date.isAfter(LocalDate.now())) {
+                if (!date.isAfter(today())) {
                     return date;
                 }
             } catch (DateTimeParseException ignored) {
