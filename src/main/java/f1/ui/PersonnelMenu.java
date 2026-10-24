@@ -225,94 +225,23 @@ public final class PersonnelMenu {
     }
 
     private void assignDriverToCar() {
-        try {
-            ensureCarsAvailable();
-            String driverId = input.readText("Driver ID: ");
-            if ("EXIT".equals(driverId)) return;
-            Driver driver = registry.findDriverById(driverId);
-            if (driver == null) {
-                input.show("Driver not found.");
-                return;
-            }
-            String chassisId = input.readText("Chassis ID: ");
-            if ("EXIT".equals(chassisId)) return;
-            F1Car car = findCarByChassisId(chassisId);
-            if (car == null) {
-                input.show("Car not found.");
-                return;
-            }
-            driver.assignToCar(car);
-            input.show("Driver assigned to " + chassisId);
-        } catch (ConsoleInput.ExitRequestedException e) {
-        } catch (Exception e) {
-            input.show("Error: " + e.getMessage());
-        }
+        teamActions().assignDriver();
     }
 
     private void assignEngineerToCar() {
-        try {
-            ensureCarsAvailable();
-            String employeeId = input.readText("Engineer Employee ID: ");
-            if ("EXIT".equals(employeeId)) return;
-            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
-            if (engineer == null) {
-                input.show("Engineer not found.");
-                return;
-            }
-            String chassisId = input.readText("Chassis ID: ");
-            if ("EXIT".equals(chassisId)) return;
-            F1Car car = findCarByChassisId(chassisId);
-            if (car == null) {
-                input.show("Car not found.");
-                return;
-            }
-            engineer.assignToCar(car);
-            input.show("Engineer assigned to " + chassisId);
-        } catch (ConsoleInput.ExitRequestedException e) {
-        } catch (Exception e) {
-            input.show("Error: " + e.getMessage());
-        }
+        teamActions().assignEngineer();
     }
 
     private void releaseEngineer() {
-        try {
-            String employeeId = input.readText("Engineer Employee ID: ");
-            if ("EXIT".equals(employeeId)) return;
-            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
-            if (engineer == null) {
-                input.show("Engineer not found.");
-                return;
-            }
-            engineer.releaseFromCar();
-            input.show("Engineer released from car.");
-        } catch (ConsoleInput.ExitRequestedException e) {
-        } catch (Exception e) {
-            input.show("Error: " + e.getMessage());
-        }
+        teamActions().releaseEngineer();
     }
 
     private void removeDriver() {
-        try {
-            String driverId = input.readText("Driver ID: ");
-            if ("EXIT".equals(driverId)) return;
-            registry.removeDriver(driverId);
-            input.show("Driver removed.");
-        } catch (ConsoleInput.ExitRequestedException e) {
-        } catch (Exception e) {
-            input.show("Error: " + e.getMessage());
-        }
+        teamActions().removeDriver();
     }
 
     private void removeEngineer() {
-        try {
-            String employeeId = input.readText("Engineer Employee ID: ");
-            if ("EXIT".equals(employeeId)) return;
-            registry.removeEngineer(employeeId);
-            input.show("Engineer removed.");
-        } catch (ConsoleInput.ExitRequestedException e) {
-        } catch (Exception e) {
-            input.show("Error: " + e.getMessage());
-        }
+        teamActions().removeEngineer();
     }
 
     private void requestCarSetup() {
@@ -354,22 +283,7 @@ public final class PersonnelMenu {
     }
 
     private void updateEngineerContact() {
-        try {
-            String employeeId = input.readText("Engineer Employee ID: ");
-            if ("EXIT".equals(employeeId)) return;
-            Engineer engineer = registry.findEngineerByEmployeeId(employeeId);
-            if (engineer == null) {
-                input.show("Engineer not found.");
-                return;
-            }
-            String newPhone = input.readText("New phone: ");
-            if ("EXIT".equals(newPhone)) return;
-            engineer.updateContact(newPhone);
-            input.show("Contact updated for " + engineer.getName());
-        } catch (ConsoleInput.ExitRequestedException e) {
-        } catch (Exception e) {
-            input.show("Error: " + e.getMessage());
-        }
+        workflowActions().updateContact();
     }
 
     private void updateEngineerSpecialty() {
