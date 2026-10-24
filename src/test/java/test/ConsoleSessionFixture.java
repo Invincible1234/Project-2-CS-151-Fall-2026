@@ -3,22 +3,35 @@ package test;
 import f1.ui.ConsoleApplication;
 import f1.ui.ConsoleInput;
 import f1.ui.ConsoleState;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 
 final class ConsoleSessionFixture {
+    static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-24T12:00:00Z"), ZoneOffset.UTC);
+    static final LocalDate TODAY = LocalDate.now(CLOCK);
+
     static String run(String script, ConsoleState state) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (PrintStream output = new PrintStream(bytes, true, StandardCharsets.UTF_8)) {
-            new ConsoleApplication(new ConsoleInput(new StringReader(script), output), state).run();
+            new ConsoleApplication(new ConsoleInput(new StringReader(script), output, CLOCK), state)
+                    .run();
         }
         return bytes.toString(StandardCharsets.UTF_8);
     }
 
     static String action(int number, String strategy, String... values) {
-        return "2\n" + number + "\n" + strategy + "\n"
+        return "2\n"
+                + number
+                + "\n"
+                + strategy
+                + "\n"
                 + (values.length == 0 ? "" : String.join("\n", values) + "\n");
     }
 

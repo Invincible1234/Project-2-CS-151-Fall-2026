@@ -10,6 +10,7 @@ import f1.model.HybridRaceCar;
 import f1.model.RaceStrategy;
 import f1.model.SessionType;
 import f1.model.Team;
+
 import model.WeatherCondition;
 
 final class StrategyCompletionFixture {
@@ -19,13 +20,22 @@ final class StrategyCompletionFixture {
     static Context fixture(Team existing, boolean hybrid, double mileage) {
         String id = Integer.toString(nextId++);
         Team team = existing == null ? new Team("TEAM-" + id, "Apex", 2, 100000) : existing;
-        F1Car car = hybrid ? new HybridRaceCar("CAR-" + id, "Apex", "Hybrid", 2026, 4, 3)
-                : new ClassicRaceCar("CAR-" + id, "Apex", "Classic", 1980, 90, 2020, 250);
+        F1Car car =
+                hybrid
+                        ? new HybridRaceCar("CAR-" + id, "Apex", "Hybrid", 2026, 4, 3)
+                        : new ClassicRaceCar("CAR-" + id, "Apex", "Classic", 1980, 90, 2020, 250);
         car.updateMileage(mileage);
         Driver driver = new Driver("DRIVER-" + id, "Driver", "LICENSE-" + id, 25, "5551234567");
         driver.setMedicalClearance(true, "Cleared");
-        Engineer engineer = new Engineer("ENGINEER-" + id, "Engineer", hybrid
-                ? EngineerSpecialty.HYBRID_POWER_UNIT : EngineerSpecialty.CLASSIC_RESTORATION, 5, "5551234567");
+        Engineer engineer =
+                new Engineer(
+                        "ENGINEER-" + id,
+                        "Engineer",
+                        hybrid
+                                ? EngineerSpecialty.HYBRID_POWER_UNIT
+                                : EngineerSpecialty.CLASSIC_RESTORATION,
+                        5,
+                        "5551234567");
         team.addCar(car);
         team.addDriver(driver);
         team.addEngineer(engineer);
@@ -37,8 +47,15 @@ final class StrategyCompletionFixture {
     }
 
     static RaceStrategy strategy(Team team, F1Car car, Engineer engineer) {
-        Circuit circuit = new Circuit("CIRCUIT-" + nextId++, "Circuit", 5, 12, true,
-                WeatherCondition.CLEAR, "Location");
+        Circuit circuit =
+                new Circuit(
+                        "CIRCUIT-" + nextId++,
+                        "Circuit",
+                        5,
+                        12,
+                        true,
+                        WeatherCondition.CLEAR,
+                        "Location");
         RaceStrategy strategy = new RaceStrategy("PLAN-" + nextId++, car, engineer, circuit);
         team.addStrategy(strategy);
         strategy.adjustForWeather(WeatherCondition.CLEAR);
@@ -58,7 +75,9 @@ final class StrategyCompletionFixture {
             if (!expected.isInstance(error)) {
                 throw new AssertionError("Unexpected rejection type", error);
             }
-            check(error.getMessage() != null && !error.getMessage().isBlank(), "Rejection must explain the error.");
+            check(
+                    error.getMessage() != null && !error.getMessage().isBlank(),
+                    "Rejection must explain the error.");
         }
     }
 
@@ -69,5 +88,5 @@ final class StrategyCompletionFixture {
         checks++;
     }
 
-    record Context(Team team, F1Car car, Driver driver, Engineer engineer, RaceStrategy strategy) { }
+    record Context(Team team, F1Car car, Driver driver, Engineer engineer, RaceStrategy strategy) {}
 }

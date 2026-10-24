@@ -1,40 +1,69 @@
 package test;
 
-import exception.CapacityExceededException;
 import exception.DuplicateEntityException;
+
+import f1.model.ClassicRaceCar;
 import f1.model.Driver;
 import f1.model.Engineer;
 import f1.model.EngineerSpecialty;
 import f1.model.HybridRaceCar;
-import f1.model.ClassicRaceCar;
 import f1.service.PersonnelRegistry;
+
 import util.AccessContext;
 import util.AccessPolicy;
-import util.Constants;
-import util.InstanceLimit;
-import util.Validation;
 
 public class PersonnelRulesVerification {
     public static void main(String[] args) {
-        runTest("testDuplicateLicenseRejected", PersonnelRulesVerification::testDuplicateLicenseRejected);
-        runTest("testDuplicateEmployeeIdRejected", PersonnelRulesVerification::testDuplicateEmployeeIdRejected);
+        runTest(
+                "testDuplicateLicenseRejected",
+                PersonnelRulesVerification::testDuplicateLicenseRejected);
+        runTest(
+                "testDuplicateEmployeeIdRejected",
+                PersonnelRulesVerification::testDuplicateEmployeeIdRejected);
         runTest("testBlankIdsRejected", PersonnelRulesVerification::testBlankIdsRejected);
         runTest("testBadPhoneRejected", PersonnelRulesVerification::testBadPhoneRejected);
         runTest("testBadAgeRejected", PersonnelRulesVerification::testBadAgeRejected);
         runTest("testBadExperienceRejected", PersonnelRulesVerification::testBadExperienceRejected);
-        runTest("testBannedDriverCannotBeAssigned", PersonnelRulesVerification::testBannedDriverCannotBeAssigned);
-        runTest("testMedicallyUnclearedDriverCannotBeAssigned", PersonnelRulesVerification::testMedicallyUnclearedDriverCannotBeAssigned);
-        runTest("testBanClearsChassisAssignments", PersonnelRulesVerification::testBanClearsChassisAssignments);
-        runTest("testHybridAssignmentRejectsNonHybridSpecialty", PersonnelRulesVerification::testHybridAssignmentRejectsNonHybridSpecialty);
-        runTest("testClassicAssignmentRejectsHybridSpecialty", PersonnelRulesVerification::testClassicAssignmentRejectsHybridSpecialty);
-        runTest("testAssignedEngineerCannotBeAssignedAgainUntilRelease", PersonnelRulesVerification::testAssignedEngineerCannotBeAssignedAgainUntilRelease);
-        runTest("testRequestPartsRejectsBadQuantity", PersonnelRulesVerification::testRequestPartsRejectsBadQuantity);
-        runTest("testRequestPartsDoesNotPretendInventoryChanged", PersonnelRulesVerification::testRequestPartsDoesNotPretendInventoryChanged);
-        runTest("testInvalidCompleteRaceInputsDoNotChangePoints", PersonnelRulesVerification::testInvalidCompleteRaceInputsDoNotChangePoints);
-        runTest("testValidFinishAddsCorrectPoints", PersonnelRulesVerification::testValidFinishAddsCorrectPoints);
-        runTest("testUnauthorizedAccessMasksPhoneAndHidesNotesAndBanReason", PersonnelRulesVerification::testUnauthorizedAccessMasksPhoneAndHidesNotesAndBanReason);
-        runTest("testTeamPrincipalCanReadSensitiveData", PersonnelRulesVerification::testTeamPrincipalCanReadSensitiveData);
-        runTest("testEqualsAndHashCodeFollowLicenseAndEmployeeId", PersonnelRulesVerification::testEqualsAndHashCodeFollowLicenseAndEmployeeId);
+        runTest(
+                "testBannedDriverCannotBeAssigned",
+                PersonnelRulesVerification::testBannedDriverCannotBeAssigned);
+        runTest(
+                "testMedicallyUnclearedDriverCannotBeAssigned",
+                PersonnelRulesVerification::testMedicallyUnclearedDriverCannotBeAssigned);
+        runTest(
+                "testBanClearsChassisAssignments",
+                PersonnelRulesVerification::testBanClearsChassisAssignments);
+        runTest(
+                "testHybridAssignmentRejectsNonHybridSpecialty",
+                PersonnelRulesVerification::testHybridAssignmentRejectsNonHybridSpecialty);
+        runTest(
+                "testClassicAssignmentRejectsHybridSpecialty",
+                PersonnelRulesVerification::testClassicAssignmentRejectsHybridSpecialty);
+        runTest(
+                "testAssignedEngineerCannotBeAssignedAgainUntilRelease",
+                PersonnelRulesVerification::testAssignedEngineerCannotBeAssignedAgainUntilRelease);
+        runTest(
+                "testRequestPartsRejectsBadQuantity",
+                PersonnelRulesVerification::testRequestPartsRejectsBadQuantity);
+        runTest(
+                "testRequestPartsDoesNotPretendInventoryChanged",
+                PersonnelRulesVerification::testRequestPartsDoesNotPretendInventoryChanged);
+        runTest(
+                "testInvalidCompleteRaceInputsDoNotChangePoints",
+                PersonnelRulesVerification::testInvalidCompleteRaceInputsDoNotChangePoints);
+        runTest(
+                "testValidFinishAddsCorrectPoints",
+                PersonnelRulesVerification::testValidFinishAddsCorrectPoints);
+        runTest(
+                "testUnauthorizedAccessMasksPhoneAndHidesNotesAndBanReason",
+                PersonnelRulesVerification
+                        ::testUnauthorizedAccessMasksPhoneAndHidesNotesAndBanReason);
+        runTest(
+                "testTeamPrincipalCanReadSensitiveData",
+                PersonnelRulesVerification::testTeamPrincipalCanReadSensitiveData);
+        runTest(
+                "testEqualsAndHashCodeFollowLicenseAndEmployeeId",
+                PersonnelRulesVerification::testEqualsAndHashCodeFollowLicenseAndEmployeeId);
         System.out.println("All personnel rules verifications passed.");
     }
 
@@ -59,9 +88,11 @@ public class PersonnelRulesVerification {
 
     private static void testDuplicateEmployeeIdRejected() {
         PersonnelRegistry registry = new PersonnelRegistry();
-        registry.registerEngineer("E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
+        registry.registerEngineer(
+                "E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
         try {
-            registry.registerEngineer("E1", "Engineer Two", EngineerSpecialty.RACE_ENGINEERING, 10, "+1987654321");
+            registry.registerEngineer(
+                    "E1", "Engineer Two", EngineerSpecialty.RACE_ENGINEERING, 10, "+1987654321");
             throw new AssertionError("Duplicate employee id was accepted.");
         } catch (DuplicateEntityException expected) {
         }
@@ -175,13 +206,22 @@ public class PersonnelRulesVerification {
 
     private static void testHybridAssignmentRejectsNonHybridSpecialty() {
         HybridRaceCar car = new HybridRaceCar("H1", "Team", "Model", 2024, 400, 300);
-        Engineer engineer = new Engineer("E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
+        Engineer engineer =
+                new Engineer(
+                        "E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
         try {
             engineer.assignToCar(car);
-            throw new AssertionError("Non-HYBRID_POWER_UNIT engineer assigned to hybrid car requiring specialist.");
+            throw new AssertionError(
+                    "Non-HYBRID_POWER_UNIT engineer assigned to hybrid car requiring specialist.");
         } catch (IllegalArgumentException expected) {
         }
-        Engineer engineer2 = new Engineer("E2", "Engineer Two", EngineerSpecialty.CLASSIC_RESTORATION, 5, "+1234567890");
+        Engineer engineer2 =
+                new Engineer(
+                        "E2",
+                        "Engineer Two",
+                        EngineerSpecialty.CLASSIC_RESTORATION,
+                        5,
+                        "+1234567890");
         try {
             engineer2.assignToCar(car);
             throw new AssertionError("CLASSIC_RESTORATION engineer assigned to hybrid car.");
@@ -191,7 +231,13 @@ public class PersonnelRulesVerification {
 
     private static void testClassicAssignmentRejectsHybridSpecialty() {
         ClassicRaceCar car = new ClassicRaceCar("C1", "Team", "Model", 2020, 90, 2023, 600);
-        Engineer engineer = new Engineer("E1", "Engineer One", EngineerSpecialty.HYBRID_POWER_UNIT, 5, "+1234567890");
+        Engineer engineer =
+                new Engineer(
+                        "E1",
+                        "Engineer One",
+                        EngineerSpecialty.HYBRID_POWER_UNIT,
+                        5,
+                        "+1234567890");
         try {
             engineer.assignToCar(car);
             throw new AssertionError("HYBRID_POWER_UNIT engineer assigned to classic car.");
@@ -202,7 +248,13 @@ public class PersonnelRulesVerification {
     private static void testAssignedEngineerCannotBeAssignedAgainUntilRelease() {
         HybridRaceCar car1 = new HybridRaceCar("H1", "Team", "Model", 2024, 400, 300);
         HybridRaceCar car2 = new HybridRaceCar("H2", "Team", "Model", 2024, 400, 300);
-        Engineer engineer = new Engineer("E1", "Engineer One", EngineerSpecialty.HYBRID_POWER_UNIT, 5, "+1234567890");
+        Engineer engineer =
+                new Engineer(
+                        "E1",
+                        "Engineer One",
+                        EngineerSpecialty.HYBRID_POWER_UNIT,
+                        5,
+                        "+1234567890");
         engineer.assignToCar(car1);
         try {
             engineer.assignToCar(car2);
@@ -214,7 +266,9 @@ public class PersonnelRulesVerification {
     }
 
     private static void testRequestPartsRejectsBadQuantity() {
-        Engineer engineer = new Engineer("E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
+        Engineer engineer =
+                new Engineer(
+                        "E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
         try {
             engineer.requestParts("Tires", 0);
             throw new AssertionError("Quantity 0 was accepted.");
@@ -233,7 +287,9 @@ public class PersonnelRulesVerification {
     }
 
     private static void testRequestPartsDoesNotPretendInventoryChanged() {
-        Engineer engineer = new Engineer("E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
+        Engineer engineer =
+                new Engineer(
+                        "E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
         boolean result = engineer.requestParts("Tires", 4);
         if (result) {
             throw new AssertionError("requestParts returned true for unassigned engineer.");
@@ -329,8 +385,16 @@ public class PersonnelRulesVerification {
             throw new AssertionError("Equal drivers should have same hashCode.");
         }
 
-        Engineer e1 = new Engineer("E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
-        Engineer e2 = new Engineer("E1", "Engineer Two", EngineerSpecialty.RACE_ENGINEERING, 10, "+1987654321");
+        Engineer e1 =
+                new Engineer(
+                        "E1", "Engineer One", EngineerSpecialty.AERODYNAMICS, 5, "+1234567890");
+        Engineer e2 =
+                new Engineer(
+                        "E1",
+                        "Engineer Two",
+                        EngineerSpecialty.RACE_ENGINEERING,
+                        10,
+                        "+1987654321");
         if (!e1.equals(e2)) {
             throw new AssertionError("Engineers with same employeeId should be equal.");
         }

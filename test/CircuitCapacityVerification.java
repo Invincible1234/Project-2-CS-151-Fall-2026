@@ -1,8 +1,11 @@
 package test;
 
 import exception.CapacityExceededException;
+
 import f1.model.Circuit;
+
 import model.WeatherCondition;
+
 import util.Constants;
 
 public class CircuitCapacityVerification {

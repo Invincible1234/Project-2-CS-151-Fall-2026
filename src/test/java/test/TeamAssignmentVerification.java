@@ -1,15 +1,19 @@
 package test;
 
 import exception.CapacityExceededException;
+
 import f1.model.ClassicRaceCar;
 import f1.model.Driver;
 import f1.model.Engineer;
 import f1.model.EngineerSpecialty;
 import f1.model.F1Car;
 import f1.model.HybridRaceCar;
+import f1.model.SessionType;
 import f1.model.Team;
-import java.util.List;
+
 import util.Constants;
+
+import java.util.List;
 
 public final class TeamAssignmentVerification {
     private static int checks;
@@ -33,20 +37,26 @@ public final class TeamAssignmentVerification {
         team.addCar(car);
         team.addDriver(driver);
         List<String> before = driver.getAssignedChassisIds();
-        check(team.assignDriver(clearedDriver(" LICENSE-1 "), hybrid("CAR-1")),
+        check(
+                team.assignDriver(clearedDriver(" LICENSE-1 "), hybrid("CAR-1")),
                 "Assignment must resolve registered objects by business identity.");
-        check(car.getAssignedDriver() == driver && driver.getAssignedChassisIds().equals(List.of("CAR-1")),
+        check(
+                car.getAssignedDriver() == driver
+                        && driver.getAssignedChassisIds().equals(List.of("CAR-1")),
                 "Car and registered driver must agree on the assignment.");
         check(before.isEmpty(), "Assignment snapshots must not change later.");
-        expectFailure(UnsupportedOperationException.class, () -> driver.getAssignedChassisIds().clear());
+        expectFailure(
+                UnsupportedOperationException.class, () -> driver.getAssignedChassisIds().clear());
         expectFailure(IllegalStateException.class, () -> team.assignDriver(driver, car));
         Driver other = clearedDriver("LICENSE-2");
         team.addDriver(other);
         expectFailure(IllegalStateException.class, () -> team.assignDriver(other, car));
-        check(car.getAssignedDriver() == driver && other.getAssignedChassisIds().isEmpty(),
+        check(
+                car.getAssignedDriver() == driver && other.getAssignedChassisIds().isEmpty(),
                 "Assignment conflicts must leave both drivers unchanged.");
         driver.unassignFromCar(car);
-        check(car.getAssignedDriver() == null && driver.getAssignedChassisIds().isEmpty(),
+        check(
+                car.getAssignedDriver() == null && driver.getAssignedChassisIds().isEmpty(),
                 "Unassignment must update both sides.");
         check(team.assignDriver(other, car), "Released car must accept a different driver.");
     }
@@ -62,19 +72,25 @@ public final class TeamAssignmentVerification {
         driver.applyBan("Suspended");
         expectFailure(IllegalStateException.class, () -> team.assignDriver(driver, car));
         driver.clearBan();
-        expectFailure(IllegalArgumentException.class,
+        expectFailure(
+                IllegalArgumentException.class,
                 () -> team.assignDriver(clearedDriver("UNREGISTERED"), car));
-        expectFailure(IllegalArgumentException.class,
+        expectFailure(
+                IllegalArgumentException.class,
                 () -> team.assignDriver(driver, hybrid("UNREGISTERED")));
-        check(car.getAssignedDriver() == null && driver.getAssignedChassisIds().isEmpty(),
+        check(
+                car.getAssignedDriver() == null && driver.getAssignedChassisIds().isEmpty(),
                 "Rejected eligibility and membership checks must not assign anything.");
         F1Car unavailable = hybrid("OUT-OF-SERVICE");
         unavailable.markOutOfService("Repairs required");
         team.addCar(unavailable);
         expectFailure(IllegalStateException.class, () -> team.assignDriver(driver, unavailable));
-        car.scheduleStrategy("Reserved");
+        car.prepareForSession(SessionType.PRACTICE);
+        car.startSession();
         expectFailure(IllegalStateException.class, () -> team.assignDriver(driver, car));
-        check(driver.getAssignedChassisIds().isEmpty(), "Unavailable cars must not change the driver.");
+        check(
+                driver.getAssignedChassisIds().isEmpty(),
+                "Unavailable cars must not change the driver.");
     }
 
     private static void verifyCarRemoval() {
@@ -85,18 +101,22 @@ public final class TeamAssignmentVerification {
         team.addDriver(driver);
         team.assignDriver(driver, car);
         expectFailure(IllegalStateException.class, () -> team.removeCar(hybrid("REMOVE-CAR")));
-        check(team.getCars().size() == 1 && car.getAssignedDriver() == driver,
+        check(
+                team.getCars().size() == 1 && car.getAssignedDriver() == driver,
                 "Assigned-car removal must preserve membership and assignments.");
         driver.unassignFromCar(car);
         Engineer engineer = engineer("REMOVE-ENGINEER");
         engineer.assignToCar(car);
         expectFailure(IllegalStateException.class, () -> team.removeCar(car));
         engineer.releaseFromCar();
-        check(team.removeCar(hybrid("REMOVE-CAR")), "Unassigned car must be removable by identity.");
+        check(
+                team.removeCar(hybrid("REMOVE-CAR")),
+                "Unassigned car must be removable by identity.");
         check(!team.removeCar(car), "Removing an unregistered car must return false.");
         check(team.addCar(hybrid("REPLACEMENT")), "Removal must free team capacity.");
         F1Car scheduled = team.getCars().get(0);
-        scheduled.scheduleStrategy("Reserved");
+        scheduled.prepareForSession(SessionType.PRACTICE);
+        scheduled.startSession();
         expectFailure(IllegalStateException.class, () -> team.removeCar(scheduled));
         check(team.getCars().size() == 1, "Scheduled-car removal must preserve membership.");
     }
@@ -111,10 +131,14 @@ public final class TeamAssignmentVerification {
         team.addDriver(driver);
         team.assignDriver(driver, first);
         team.assignDriver(driver, second);
-        second.scheduleStrategy("Reserved");
+        second.prepareForSession(SessionType.PRACTICE);
+        second.startSession();
         expectFailure(IllegalStateException.class, () -> team.removeDriver(driver));
-        check(team.getDrivers().size() == 1 && driver.getAssignedChassisIds().size() == 2
-                && first.getAssignedDriver() == driver && second.getAssignedDriver() == driver,
+        check(
+                team.getDrivers().size() == 1
+                        && driver.getAssignedChassisIds().size() == 2
+                        && first.getAssignedDriver() == driver
+                        && second.getAssignedDriver() == driver,
                 "All assignments must be checked before removing any of them.");
         expectFailure(IllegalStateException.class, () -> driver.unassignFromCar(second));
 
@@ -127,12 +151,18 @@ public final class TeamAssignmentVerification {
         removable.addDriver(removableDriver);
         removable.assignDriver(removableDriver, third);
         removable.assignDriver(removableDriver, fourth);
-        check(removable.removeDriver(driver(" REMOVABLE-LICENSE ")),
+        check(
+                removable.removeDriver(driver(" REMOVABLE-LICENSE ")),
                 "Removal must resolve the registered driver rather than the supplied copy.");
-        check(removable.getDrivers().isEmpty() && removableDriver.getAssignedChassisIds().isEmpty()
-                && third.getAssignedDriver() == null && fourth.getAssignedDriver() == null,
+        check(
+                removable.getDrivers().isEmpty()
+                        && removableDriver.getAssignedChassisIds().isEmpty()
+                        && third.getAssignedDriver() == null
+                        && fourth.getAssignedDriver() == null,
                 "Removing a driver must release every assignment on both sides.");
-        check(!removable.removeDriver(removableDriver), "Repeated driver removal must return false.");
+        check(
+                !removable.removeDriver(removableDriver),
+                "Repeated driver removal must return false.");
     }
 
     private static void verifyEngineerRemoval() {
@@ -145,35 +175,56 @@ public final class TeamAssignmentVerification {
         team.addCar(otherCar);
         team.addEngineer(engineer);
         check(engineer.assignToCar(car), "Qualified engineer assignment must succeed.");
-        check(car.getAssignedEngineer() == engineer && !engineer.isAvailable()
-                && "ENGINEER-CAR".equals(engineer.getAssignedChassisId()),
+        check(
+                car.getAssignedEngineer() == engineer
+                        && !engineer.isAvailable()
+                        && "ENGINEER-CAR".equals(engineer.getAssignedChassisId()),
                 "Engineer assignment must update both sides and availability.");
         expectFailure(IllegalStateException.class, () -> engineer.assignToCar(otherCar));
         expectFailure(IllegalStateException.class, () -> other.assignToCar(car));
-        check(other.isAvailable() && other.getAssignedChassisId().isEmpty()
-                && otherCar.getAssignedEngineer() == null, "Conflicts must not partially assign engineers.");
+        check(
+                other.isAvailable()
+                        && other.getAssignedChassisId().isEmpty()
+                        && otherCar.getAssignedEngineer() == null,
+                "Conflicts must not partially assign engineers.");
         engineer.releaseFromCar();
-        check(car.getAssignedEngineer() == null && engineer.isAvailable(),
+        check(
+                car.getAssignedEngineer() == null && engineer.isAvailable(),
                 "Release must clear the car and restore engineer availability.");
         engineer.assignToCar(otherCar);
-        check(team.removeEngineer(engineer(" EMPLOYEE-1 ")),
+        check(
+                team.removeEngineer(engineer(" EMPLOYEE-1 ")),
                 "Removal must resolve the registered engineer by identity.");
-        check(team.getEngineers().isEmpty() && otherCar.getAssignedEngineer() == null
-                && engineer.isAvailable() && engineer.getAssignedChassisId().isEmpty(),
+        check(
+                team.getEngineers().isEmpty()
+                        && otherCar.getAssignedEngineer() == null
+                        && engineer.isAvailable()
+                        && engineer.getAssignedChassisId().isEmpty(),
                 "Engineer removal must clear all assignment state.");
         check(!team.removeEngineer(engineer), "Repeated engineer removal must return false.");
 
         team.addEngineer(other);
         other.assignToCar(car);
-        car.scheduleStrategy("Reserved");
+        car.prepareForSession(SessionType.PRACTICE);
+        car.startSession();
         expectFailure(IllegalStateException.class, () -> team.removeEngineer(other));
-        check(team.getEngineers().size() == 1 && car.getAssignedEngineer() == other
-                && !other.isAvailable(), "Scheduled-strategy rejection must preserve engineer state.");
-        Engineer classicEngineer = new Engineer("CLASSIC", "Engineer",
-                EngineerSpecialty.CLASSIC_RESTORATION, 5, "5551234567");
+        check(
+                team.getEngineers().size() == 1
+                        && car.getAssignedEngineer() == other
+                        && !other.isAvailable(),
+                "Scheduled-strategy rejection must preserve engineer state.");
+        Engineer classicEngineer =
+                new Engineer(
+                        "CLASSIC",
+                        "Engineer",
+                        EngineerSpecialty.CLASSIC_RESTORATION,
+                        5,
+                        "5551234567");
         expectFailure(IllegalArgumentException.class, () -> classicEngineer.assignToCar(otherCar));
         F1Car classic = new ClassicRaceCar("CLASSIC", "Apex", "Classic", 1970, 90, 2020, 300);
-        check(classicEngineer.assignToCar(classic), "Restoration engineer must be eligible for classic cars.");
+        check(
+                classicEngineer.assignToCar(classic),
+                "Restoration engineer must be eligible for classic cars.");
     }
 
     private static void verifyPersonnelChanges() {
@@ -186,24 +237,34 @@ public final class TeamAssignmentVerification {
         expectFailure(IllegalArgumentException.class, () -> driver.applyBan(" "));
         check(car.getAssignedDriver() == driver, "Invalid ban must preserve assignments.");
         driver.applyBan("Suspended");
-        check(car.getAssignedDriver() == null && driver.getAssignedChassisIds().isEmpty()
-                && !driver.isEligibleForAssignment(), "Ban must release assignments and prevent reassignment.");
+        check(
+                car.getAssignedDriver() == null
+                        && driver.getAssignedChassisIds().isEmpty()
+                        && !driver.isEligibleForAssignment(),
+                "Ban must release assignments and prevent reassignment.");
         driver.clearBan();
         team.assignDriver(driver, car);
         driver.setMedicalClearance(false, "Not cleared");
-        check(car.getAssignedDriver() == null && driver.getAssignedChassisIds().isEmpty()
-                && !driver.isEligibleForAssignment(), "Revoking clearance must release assignments.");
+        check(
+                car.getAssignedDriver() == null
+                        && driver.getAssignedChassisIds().isEmpty()
+                        && !driver.isEligibleForAssignment(),
+                "Revoking clearance must release assignments.");
     }
 
     private static void verifyAssignmentLimit() {
+        util.InstanceLimit.resetForTesting();
         Driver driver = clearedDriver("LIMIT-LICENSE");
         for (int i = 0; i < Constants.MAXIMUM_INSTANCES; i++) {
             driver.assignToCar(hybrid("LIMIT-" + i));
         }
-        F1Car extra = hybrid("LIMIT-EXTRA");
+        F1Car extra = new ClassicRaceCar("LIMIT-EXTRA", "Apex", "Classic", 1980, 90, 2020, 250);
         expectFailure(CapacityExceededException.class, () -> driver.assignToCar(extra));
-        check(driver.getAssignedChassisIds().size() == Constants.MAXIMUM_INSTANCES
-                && extra.getAssignedDriver() == null, "Assignment overflow must leave both sides unchanged.");
+        check(
+                driver.getAssignedChassisIds().size() == Constants.MAXIMUM_INSTANCES
+                        && extra.getAssignedDriver() == null,
+                "Assignment overflow must preserve both sides.");
+        util.InstanceLimit.resetForTesting();
     }
 
     private static void verifyInvalidInputs() {
@@ -220,7 +281,10 @@ public final class TeamAssignmentVerification {
         expectFailure(IllegalArgumentException.class, () -> driver.unassignFromCar(null));
         expectFailure(IllegalArgumentException.class, () -> driver.unassignFromCar(car));
         expectFailure(IllegalArgumentException.class, () -> engineer.assignToCar(null));
-        check(team.getCars().isEmpty() && team.getDrivers().isEmpty() && team.getEngineers().isEmpty(),
+        check(
+                team.getCars().isEmpty()
+                        && team.getDrivers().isEmpty()
+                        && team.getEngineers().isEmpty(),
                 "Invalid operations must not register entities.");
     }
 
@@ -254,8 +318,9 @@ public final class TeamAssignmentVerification {
             if (!expected.isInstance(failure)) {
                 throw new AssertionError("Expected " + expected.getSimpleName() + ".", failure);
             }
-            check(expected == UnsupportedOperationException.class
-                    || failure.getMessage() != null && !failure.getMessage().isBlank(),
+            check(
+                    expected == UnsupportedOperationException.class
+                            || failure.getMessage() != null && !failure.getMessage().isBlank(),
                     "Rejected business actions must have a clear error message.");
         }
     }

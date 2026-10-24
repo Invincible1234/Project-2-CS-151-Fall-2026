@@ -1,6 +1,7 @@
 package test;
 
 import exception.RegulatoryViolationException;
+
 import f1.model.HybridRaceCar;
 import f1.model.SessionType;
 
@@ -11,7 +12,7 @@ public class HybridLifecycleVerification {
         expect(IllegalStateException.class, () -> car.chargeBatteryFromRecovery(1));
         expect(IllegalStateException.class, car::startNextLap);
         expect(IllegalStateException.class, car::completeLap);
-        car.prepareForSession(SessionType.RACE);
+        car.prepareForSession(SessionType.PRACTICE);
         car.startSession();
         check(car.getCurrentLapNumber() == 1, "Session must begin on lap one.");
         car.deployEnergyBoost(2);
@@ -20,8 +21,10 @@ public class HybridLifecycleVerification {
         car.chargeBatteryFromRecovery(5);
         checkEnergy(car, 15, 4, 9);
 
-        for (double invalid : new double[] {0, -1, Double.NaN,
-                Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY}) {
+        for (double invalid :
+                new double[] {
+                    0, -1, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY
+                }) {
             expect(IllegalArgumentException.class, () -> car.deployEnergyBoost(invalid));
             expect(IllegalArgumentException.class, () -> car.chargeBatteryFromRecovery(invalid));
             checkEnergy(car, 15, 4, 9);
@@ -31,7 +34,9 @@ public class HybridLifecycleVerification {
         expect(IllegalStateException.class, car::resetEnergyState);
         expect(IllegalStateException.class, car::startNextLap);
         expect(IllegalStateException.class, car::startSession);
-        check(!car.prepareForSession(SessionType.RACE), "Preparation bypassed active lap limits.");
+        check(
+                !car.prepareForSession(SessionType.PRACTICE),
+                "Preparation bypassed active lap limits.");
         checkEnergy(car, 15, 4, 9);
 
         car.completeLap();
@@ -83,9 +88,13 @@ public class HybridLifecycleVerification {
         System.out.println("Hybrid lifecycle verification passed.");
     }
 
-    private static void checkEnergy(HybridRaceCar car, double stored, double deployed, double recovered) {
-        check(car.getCurrentEnergyMJ() == stored && car.getDeployedThisLapMJ() == deployed
-                && car.getRecoveredThisLapMJ() == recovered, "Unexpected energy state.");
+    private static void checkEnergy(
+            HybridRaceCar car, double stored, double deployed, double recovered) {
+        check(
+                car.getCurrentEnergyMJ() == stored
+                        && car.getDeployedThisLapMJ() == deployed
+                        && car.getRecoveredThisLapMJ() == recovered,
+                "Unexpected energy state.");
     }
 
     private static void check(boolean condition, String message) {

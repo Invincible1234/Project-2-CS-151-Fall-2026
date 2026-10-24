@@ -2,6 +2,7 @@ package test;
 
 import exception.InsufficientResourcesException;
 import exception.InvalidStrategyException;
+
 import f1.model.Circuit;
 import f1.model.Driver;
 import f1.model.Engineer;
@@ -10,10 +11,12 @@ import f1.model.RaceStrategy;
 import f1.model.SessionType;
 import f1.model.Team;
 import f1.model.UserRole;
-import java.util.Map;
+
 import model.StrategyStatus;
 import model.TireCompound;
 import model.WeatherCondition;
+
+import java.util.Map;
 
 public final class RaceStrategyReadinessVerification {
     private static int checks;
@@ -22,29 +25,43 @@ public final class RaceStrategyReadinessVerification {
     public static void main(String[] args) {
         Context ready = fixture(true, true);
         double balance = ready.team.getBudget(UserRole.TEAM_PRINCIPAL);
-        check(ready.strategy.markReady() && ready.strategy.getStatus() == StrategyStatus.READY,
+        check(
+                ready.strategy.markReady() && ready.strategy.getStatus() == StrategyStatus.READY,
                 "A complete strategy must become ready.");
-        check(!ready.car.isSessionActive() && ready.car.getActiveStrategy() == null
-                && ready.team.getBudget(UserRole.TEAM_PRINCIPAL) == balance,
+        check(
+                !ready.car.isSessionActive()
+                        && ready.car.getActiveStrategy() == null
+                        && ready.team.getBudget(UserRole.TEAM_PRINCIPAL) == balance,
                 "Readiness must not start sessions, reserve a car, or charge the budget.");
         check(ready.team.consumeParts("TIRES", 3), "Readiness alone must not reserve stock.");
         expectUnchanged(ready, InvalidStrategyException.class, ready.strategy::markReady);
-        expectUnchanged(ready, InvalidStrategyException.class,
+        expectUnchanged(
+                ready,
+                InvalidStrategyException.class,
                 () -> ready.strategy.selectTireCompound(TireCompound.SOFT));
-        expectUnchanged(ready, InvalidStrategyException.class,
+        expectUnchanged(
+                ready,
+                InvalidStrategyException.class,
                 () -> ready.strategy.adjustForWeather(WeatherCondition.RAIN));
-        expectUnchanged(ready, InvalidStrategyException.class,
+        expectUnchanged(
+                ready,
+                InvalidStrategyException.class,
                 () -> ready.strategy.addEnergyPlan("DEPLOY=1;RECOVER=0"));
-        expectUnchanged(ready, InvalidStrategyException.class,
+        expectUnchanged(
+                ready,
+                InvalidStrategyException.class,
                 () -> ready.strategy.addRequiredParts("TIRES", 1));
 
         Context missingPlan = fixture(false, true);
-        expectUnchanged(missingPlan, InvalidStrategyException.class, missingPlan.strategy::markReady);
+        expectUnchanged(
+                missingPlan, InvalidStrategyException.class, missingPlan.strategy::markReady);
         Context missingTires = fixture(true, false);
-        expectUnchanged(missingTires, InvalidStrategyException.class, missingTires.strategy::markReady);
+        expectUnchanged(
+                missingTires, InvalidStrategyException.class, missingTires.strategy::markReady);
         Context staleEstimate = fixture(true, true);
         staleEstimate.strategy.selectTireCompound(TireCompound.SOFT);
-        expectUnchanged(staleEstimate, InvalidStrategyException.class, staleEstimate.strategy::markReady);
+        expectUnchanged(
+                staleEstimate, InvalidStrategyException.class, staleEstimate.strategy::markReady);
         Context weather = fixture(true, true);
         weather.circuit.updateConditions(WeatherCondition.RAIN);
         expectUnchanged(weather, InvalidStrategyException.class, weather.strategy::markReady);
@@ -70,13 +87,25 @@ public final class RaceStrategyReadinessVerification {
 
         Context parts = fixture(true, true);
         parts.strategy.addRequiredParts(" tires ", 2);
-        check(parts.strategy.getRequiredParts().equals(Map.of("TIRES", 3))
-                && parts.strategy.getPartsUsed().size() == 1, "Required quantities must accumulate without duplicate keys.");
-        expectUnchanged(parts, IllegalArgumentException.class, () -> parts.strategy.addRequiredParts("TIRES", 0));
-        expectUnchanged(parts, IllegalArgumentException.class,
+        check(
+                parts.strategy.getRequiredParts().equals(Map.of("TIRES", 3))
+                        && parts.strategy.getPartsUsed().size() == 1,
+                "Required quantities must accumulate without duplicate keys.");
+        expectUnchanged(
+                parts,
+                IllegalArgumentException.class,
+                () -> parts.strategy.addRequiredParts("TIRES", 0));
+        expectUnchanged(
+                parts,
+                IllegalArgumentException.class,
                 () -> parts.strategy.addRequiredParts("TIRES", Integer.MAX_VALUE));
-        expectUnchanged(parts, IllegalArgumentException.class, () -> parts.strategy.addRequiredParts("UNKNOWN", 1));
-        expectUnchanged(parts, UnsupportedOperationException.class,
+        expectUnchanged(
+                parts,
+                IllegalArgumentException.class,
+                () -> parts.strategy.addRequiredParts("UNKNOWN", 1));
+        expectUnchanged(
+                parts,
+                UnsupportedOperationException.class,
                 () -> parts.strategy.getRequiredParts().put("TIRES", 0));
         check(parts.strategy.markReady(), "Exact required stock must support readiness.");
         System.out.println("PASS: Race strategy readiness (" + checks + " checks)");
@@ -88,14 +117,28 @@ public final class RaceStrategyReadinessVerification {
         HybridRaceCar car = new HybridRaceCar("CAR-" + id, "Apex", "Hybrid", 2026, 4, 3);
         Driver driver = new Driver("DRIVER-" + id, "Driver", "LICENSE-" + id, 25, "5551234567");
         driver.setMedicalClearance(true, "Cleared");
-        Engineer engineer = new Engineer("ENGINEER-" + id, "Engineer", f1.model.EngineerSpecialty.HYBRID_POWER_UNIT, 5, "5551234567");
+        Engineer engineer =
+                new Engineer(
+                        "ENGINEER-" + id,
+                        "Engineer",
+                        f1.model.EngineerSpecialty.HYBRID_POWER_UNIT,
+                        5,
+                        "5551234567");
         team.addCar(car);
         team.addDriver(driver);
         team.addEngineer(engineer);
         team.assignDriver(driver, car);
         engineer.assignToCar(car);
         car.prepareForSession(SessionType.RACE);
-        Circuit circuit = new Circuit("CIRCUIT-" + id, "Circuit", 5, 12, true, WeatherCondition.CLEAR, "Location");
+        Circuit circuit =
+                new Circuit(
+                        "CIRCUIT-" + id,
+                        "Circuit",
+                        5,
+                        12,
+                        true,
+                        WeatherCondition.CLEAR,
+                        "Location");
         RaceStrategy strategy = new RaceStrategy("PLAN-" + id, car, engineer, circuit);
         team.addStrategy(strategy);
         strategy.adjustForWeather(WeatherCondition.CLEAR);
@@ -110,7 +153,8 @@ public final class RaceStrategyReadinessVerification {
         return new Context(team, car, driver, engineer, circuit, strategy);
     }
 
-    private static void expectUnchanged(Context context, Class<? extends RuntimeException> expected, Runnable action) {
+    private static void expectUnchanged(
+            Context context, Class<? extends RuntimeException> expected, Runnable action) {
         StrategyStatus status = context.strategy.getStatus();
         double estimate = context.strategy.getEstimatedLapTimeDelta();
         boolean finalized = context.strategy.hasFinalizedLapTimeEstimate();
@@ -127,11 +171,15 @@ public final class RaceStrategyReadinessVerification {
             }
             checks++;
         }
-        check(context.strategy.getStatus() == status && context.strategy.getEstimatedLapTimeDelta() == estimate
-                && context.strategy.hasFinalizedLapTimeEstimate() == finalized && context.car.isRaceReady() == prepared
-                && !context.car.isSessionActive() && context.team.getBudget(UserRole.TEAM_PRINCIPAL) == balance
-                && context.team.getPartsInventory(UserRole.TEAM_PRINCIPAL).equals(stock)
-                && context.strategy.getRequiredParts().equals(requirements),
+        check(
+                context.strategy.getStatus() == status
+                        && context.strategy.getEstimatedLapTimeDelta() == estimate
+                        && context.strategy.hasFinalizedLapTimeEstimate() == finalized
+                        && context.car.isRaceReady() == prepared
+                        && !context.car.isSessionActive()
+                        && context.team.getBudget(UserRole.TEAM_PRINCIPAL) == balance
+                        && context.team.getPartsInventory(UserRole.TEAM_PRINCIPAL).equals(stock)
+                        && context.strategy.getRequiredParts().equals(requirements),
                 "Rejected readiness or editing must leave planning and resources unchanged.");
     }
 
@@ -142,7 +190,11 @@ public final class RaceStrategyReadinessVerification {
         checks++;
     }
 
-    private record Context(Team team, HybridRaceCar car, Driver driver, Engineer engineer,
-            Circuit circuit, RaceStrategy strategy) {
-    }
+    private record Context(
+            Team team,
+            HybridRaceCar car,
+            Driver driver,
+            Engineer engineer,
+            Circuit circuit,
+            RaceStrategy strategy) {}
 }

@@ -1,13 +1,15 @@
 package f1.model;
 
 import exception.CapacityExceededException;
-import java.util.ArrayList;
-import java.util.List;
+
 import util.AccessContext;
 import util.AccessPolicy;
 import util.Constants;
 import util.InstanceLimit;
 import util.Validation;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Driver {
     private final String driverId;
@@ -173,19 +175,25 @@ public class Driver {
     }
 
     public void completeRace(RaceResult result, Team team) {
+        completeRace(result, team, null);
+    }
+
+    public void completeRace(RaceResult result, Team team, RaceStrategy strategy) {
         if (result == null || team == null || !driverId.equals(result.getDriverId())) {
-            throw new IllegalArgumentException("A result for this driver and its registered team are required.");
+            throw new IllegalArgumentException(
+                    "A result for this driver and its registered team are required.");
         }
         if (team.getDrivers().stream().noneMatch(driver -> driver == this)) {
-            throw new IllegalArgumentException("This driver must be registered with the result team.");
+            throw new IllegalArgumentException(
+                    "This driver must be registered with the result team.");
         }
-        team.recordRaceResult(result);
+        team.recordRaceResult(result, strategy);
     }
 
     @Override
     public boolean equals(Object other) {
-        return this == other || other instanceof Driver driver
-                && licenseNumber.equals(driver.licenseNumber);
+        return this == other
+                || other instanceof Driver driver && licenseNumber.equals(driver.licenseNumber);
     }
 
     @Override
@@ -195,10 +203,19 @@ public class Driver {
 
     @Override
     public String toString() {
-        return "Driver{driverId='" + driverId + "', name='" + name
-                + "', licenseNumber='" + licenseNumber + "', age=" + age
-                + ", championshipPoints=" + championshipPoints
-                + ", assignments=" + assignedChassisIds.size() + "}";
+        return "Driver{driverId='"
+                + driverId
+                + "', name='"
+                + name
+                + "', licenseNumber='"
+                + licenseNumber
+                + "', age="
+                + age
+                + ", championshipPoints="
+                + championshipPoints
+                + ", assignments="
+                + assignedChassisIds.size()
+                + "}";
     }
 
     private static String requireBanPairing(boolean banned, String banReason) {

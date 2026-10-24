@@ -1,8 +1,7 @@
 package test;
 
-import f1.ui.ConsoleInput;
 import f1.ui.PersonnelMenu;
-import f1.service.PersonnelRegistry;
+
 import util.InstanceLimit;
 
 import java.io.ByteArrayInputStream;
@@ -10,7 +9,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
 
 public class PersonnelConsoleVerification {
     private static final ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -20,7 +18,9 @@ public class PersonnelConsoleVerification {
     public static void main(String[] args) {
         runTest("badIntegerRejected", PersonnelConsoleVerification::testBadIntegerRejected);
         runTest("badMenuChoiceRejected", PersonnelConsoleVerification::testBadMenuChoiceRejected);
-        runTest("duplicateRegistrationRejected", PersonnelConsoleVerification::testDuplicateRegistrationRejected);
+        runTest(
+                "duplicateRegistrationRejected",
+                PersonnelConsoleVerification::testDuplicateRegistrationRejected);
         runTest("exitEndsCleanly", PersonnelConsoleVerification::testExitEndsCleanly);
         runTest("singleScannerInSource", PersonnelConsoleVerification::testSingleScannerInSource);
 
@@ -59,10 +59,12 @@ public class PersonnelConsoleVerification {
 
         String out = output.toString();
         if (!out.contains("Invalid integer")) {
-            throw new AssertionError("Expected 'Invalid integer' message not found. Output: " + out);
+            throw new AssertionError(
+                    "Expected 'Invalid integer' message not found. Output: " + out);
         }
         if (!out.contains("Age: ")) {
-            throw new AssertionError("Menu should re-prompt for age after invalid input. Output: " + out);
+            throw new AssertionError(
+                    "Menu should re-prompt for age after invalid input. Output: " + out);
         }
     }
 
@@ -73,12 +75,26 @@ public class PersonnelConsoleVerification {
 
         String out = output.toString();
         if (!out.contains("Unrecognized choice: 99")) {
-            throw new AssertionError("Expected 'Unrecognized choice' message not found. Output: " + out);
+            throw new AssertionError(
+                    "Expected 'Unrecognized choice' message not found. Output: " + out);
         }
     }
 
     private static void testDuplicateRegistrationRejected() {
-        String input = "1\nD1\nDriver One\nLIC123\n25\n+1234567890\n1\nD2\nDriver Two\nLIC123\n30\n+1987654321\nEXIT\n";
+        String input =
+                "1\n"
+                        + "D1\n"
+                        + "Driver One\n"
+                        + "LIC123\n"
+                        + "25\n"
+                        + "+1234567890\n"
+                        + "1\n"
+                        + "D2\n"
+                        + "Driver Two\n"
+                        + "LIC123\n"
+                        + "30\n"
+                        + "+1987654321\n"
+                        + "EXIT\n";
         ByteArrayInputStream in = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         runMenuWithInput(in);
 
@@ -88,7 +104,12 @@ public class PersonnelConsoleVerification {
         }
         int menuCount = countOccurrences(out, "--- Personnel Menu ---");
         if (menuCount < 3) {
-            throw new AssertionError("Menu should appear at least 3 times (initial, after first registration, after duplicate error). Found " + menuCount + ". Output: " + out);
+            throw new AssertionError(
+                    "Menu should appear at least 3 times (initial, after first registration, after"
+                            + " duplicate error). Found "
+                            + menuCount
+                            + ". Output: "
+                            + out);
         }
     }
 
@@ -132,7 +153,8 @@ public class PersonnelConsoleVerification {
 
         int scannerCount = countScannerConstructions(projectRoot + "/src");
         if (scannerCount != 1) {
-            throw new AssertionError("Expected exactly 1 'new Scanner' construction, found " + scannerCount);
+            throw new AssertionError(
+                    "Expected exactly 1 'new Scanner' construction, found " + scannerCount);
         }
     }
 
@@ -143,7 +165,8 @@ public class PersonnelConsoleVerification {
         for (java.io.File file : dir.listFiles()) {
             if (file.isDirectory()) {
                 count += countScannerConstructions(file.getAbsolutePath());
-            } else if (file.getName().endsWith(".java") && !file.getName().equals("PersonnelConsoleVerification.java")) {
+            } else if (file.getName().endsWith(".java")
+                    && !file.getName().equals("PersonnelConsoleVerification.java")) {
                 try {
                     String content = java.nio.file.Files.readString(file.toPath());
                     int idx = 0;
@@ -151,7 +174,8 @@ public class PersonnelConsoleVerification {
                         count++;
                         idx += 11;
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
         return count;
@@ -173,5 +197,7 @@ public class PersonnelConsoleVerification {
         }
     }
 
-    static class ExitRequestedException extends RuntimeException {}
+    static class ExitRequestedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
 }

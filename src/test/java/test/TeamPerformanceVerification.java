@@ -7,6 +7,7 @@ import f1.model.F1Car;
 import f1.model.HybridRaceCar;
 import f1.model.Team;
 import f1.model.UserRole;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -25,12 +26,17 @@ public final class TeamPerformanceVerification {
     private static void verifyEmptyReport() {
         Team team = new Team("EMPTY", "Apex", 2, 0);
         String report = team.generateTeamPerformanceReport();
-        check(report.contains("Apex (EMPTY)") && report.contains("Cars: 0/2"),
+        check(
+                report.contains("Apex (EMPTY)") && report.contains("Cars: 0/2"),
                 "Report must identify the team and capacity.");
-        check(report.contains("Recorded results: 0") && report.contains("Championship points: 0"),
+        check(
+                report.contains("Recorded results: 0") && report.contains("Championship points: 0"),
                 "New teams must have no results or points.");
-        check(report.contains("Wins: 0") && report.contains("Podiums: 0")
-                && report.contains("Best finish: N/A") && report.contains("Average finish: N/A"),
+        check(
+                report.contains("Wins: 0")
+                        && report.contains("Podiums: 0")
+                        && report.contains("Best finish: N/A")
+                        && report.contains("Average finish: N/A"),
                 "Empty statistics must avoid invalid averages or sentinel values.");
         check(report.contains("No registered drivers."), "Empty standings must be explained.");
     }
@@ -48,24 +54,40 @@ public final class TeamPerformanceVerification {
         Driver alpha = new Driver(" ALPHA ", "Driver A", "LICENSE-A", 25, "5551234567");
         team.addDriver(zed);
         team.addDriver(alpha);
-        team.addEngineer(new Engineer("ENGINEER", "Engineer", f1.model.EngineerSpecialty.HYBRID_POWER_UNIT, 5, "5551234567"));
+        team.addEngineer(
+                new Engineer(
+                        "ENGINEER",
+                        "Engineer",
+                        f1.model.EngineerSpecialty.HYBRID_POWER_UNIT,
+                        5,
+                        "5551234567"));
         List<Driver> before = team.getDrivers();
         String report = team.generateTeamPerformanceReport();
-        check(report.contains("Cars: 2/2") && report.contains("Ready cars: 0")
-                && report.contains("Decommissioned cars: 1"), "Report must reflect current car state.");
+        check(
+                report.contains("Cars: 2/2")
+                        && report.contains("Ready cars: 0")
+                        && report.contains("Decommissioned cars: 1"),
+                "Report must reflect current car state.");
         check(report.contains("Total mileage (km): 20.25"), "Report must aggregate car mileage.");
-        check(report.contains("Drivers: 2") && report.contains("Engineers: 1"),
+        check(
+                report.contains("Drivers: 2") && report.contains("Engineers: 1"),
                 "Report must count personnel.");
-        check(report.indexOf("ALPHA: 0 points") < report.indexOf("ZED: 0 points")
-                && report.contains("ALPHA: 0 points") && report.contains("ZED: 0 points"),
+        check(
+                report.indexOf("ALPHA: 0 points") < report.indexOf("ZED: 0 points")
+                        && report.contains("ALPHA: 0 points")
+                        && report.contains("ZED: 0 points"),
                 "Tied standings must have a deterministic driver-ID order.");
-        check(team.getDrivers().get(0) == zed && before.get(0) == zed,
+        check(
+                team.getDrivers().get(0) == zed && before.get(0) == zed,
                 "Sorting standings must not reorder registered drivers.");
-        check(report.equals(team.generateTeamPerformanceReport()), "Repeated reporting must be stable.");
+        check(
+                report.equals(team.generateTeamPerformanceReport()),
+                "Repeated reporting must be stable.");
         Locale original = Locale.getDefault();
         try {
             Locale.setDefault(Locale.GERMANY);
-            check(report.equals(team.generateTeamPerformanceReport()),
+            check(
+                    report.equals(team.generateTeamPerformanceReport()),
                     "Report formatting must not depend on the machine locale.");
         } finally {
             Locale.setDefault(original);
@@ -82,13 +104,27 @@ public final class TeamPerformanceVerification {
         double budget = team.getBudget(UserRole.TEAM_PRINCIPAL);
         Map<String, Integer> inventory = team.getPartsInventory(UserRole.TEAM_PRINCIPAL);
         String report = team.generateTeamPerformanceReport();
-        for (String sensitive : new String[] { "98765", "96365", "PRIVATE-LICENSE", "5559876543",
-                "PRIVATE-MEDICAL-NOTE", "PRIVATE-BAN-REASON", "TIRES", "budget", "partsInventory" }) {
-            check(!report.contains(sensitive), "Public report exposed restricted data: " + sensitive);
+        for (String sensitive :
+                new String[] {
+                    "98765",
+                    "96365",
+                    "PRIVATE-LICENSE",
+                    "5559876543",
+                    "PRIVATE-MEDICAL-NOTE",
+                    "PRIVATE-BAN-REASON",
+                    "TIRES",
+                    "budget",
+                    "partsInventory"
+                }) {
+            check(
+                    !report.contains(sensitive),
+                    "Public report exposed restricted data: " + sensitive);
         }
-        check(team.getBudget(UserRole.TEAM_PRINCIPAL) == budget
-                && team.getPartsInventory(UserRole.TEAM_PRINCIPAL).equals(inventory)
-                && team.getChampionshipPoints() == 0, "Reporting must not change team state.");
+        check(
+                team.getBudget(UserRole.TEAM_PRINCIPAL) == budget
+                        && team.getPartsInventory(UserRole.TEAM_PRINCIPAL).equals(inventory)
+                        && team.getChampionshipPoints() == 0,
+                "Reporting must not change team state.");
     }
 
     private static void verifyRejectedResult() {
@@ -98,10 +134,13 @@ public final class TeamPerformanceVerification {
             team.recordRaceResult(null);
             throw new AssertionError("Null result was accepted.");
         } catch (IllegalArgumentException expected) {
-            check(expected.getMessage() != null && !expected.getMessage().isBlank(),
+            check(
+                    expected.getMessage() != null && !expected.getMessage().isBlank(),
                     "Invalid results must have a clear error message.");
         }
-        check(before.equals(team.generateTeamPerformanceReport()) && team.getRaceResults().isEmpty(),
+        check(
+                before.equals(team.generateTeamPerformanceReport())
+                        && team.getRaceResults().isEmpty(),
                 "Rejected result must not alter results or statistics.");
     }
 

@@ -1,6 +1,7 @@
 package f1.ui;
 
 import f1.model.RaceStrategy;
+
 import java.util.List;
 
 final class StrategyMenu {
@@ -15,7 +16,9 @@ final class StrategyMenu {
     }
 
     void open() {
-        input.show("Strategies: 1 Create | 2 Weather | 3 Tires | 4 Energy | 5 Required parts | 6 Finalize estimate");
+        input.show(
+                "Strategies: 1 Create | 2 Weather | 3 Tires | 4 Energy | 5 Required parts | 6"
+                        + " Finalize estimate");
         input.show("7 Mark ready | 8 Start | 9 Complete | 10 Cancel | 11 List | 0 Back");
         int action = input.integer("Strategy action", 0, 11);
         if (action == 0) {
@@ -30,18 +33,46 @@ final class StrategyMenu {
             if (strategies.isEmpty()) {
                 input.show("No strategies registered for this team.");
             }
-            strategies.forEach(strategy -> input.show(strategy + "; reason=" + strategy.getCancellationReason()));
+            strategies.forEach(
+                    strategy -> {
+                        input.show(strategy + "; reason=" + strategy.getCancellationReason());
+                        input.show(
+                                "Engineer: "
+                                        + strategy.getEngineerId()
+                                        + "; weather: "
+                                        + strategy.getExpectedWeather()
+                                        + "; tires: "
+                                        + strategy.getTireCompound()
+                                        + "; parts: "
+                                        + strategy.getPartsUsed());
+                        input.show(
+                                "Lap estimate: "
+                                        + (strategy.hasFinalizedLapTimeEstimate()
+                                                ? strategy.getEstimatedLapTimeDelta() + " seconds"
+                                                : "not finalized"));
+                        input.show(
+                                "Energy: "
+                                        + (strategy.hasEnergyPlan()
+                                                ? strategy.getEnergyDeploymentPlan()
+                                                : "none")
+                                        + "; recommended deployment: "
+                                        + strategy.getRecommendedEnergyDeploymentMj()
+                                        + " MJ");
+                    });
             return;
         }
-        RaceStrategy strategy = input.select("Strategy (chassis/strategy)", strategies,
-                entry -> entry.getChassisId() + "/" + entry.getStrategyId());
+        RaceStrategy strategy =
+                input.select(
+                        "Strategy (chassis/strategy)",
+                        strategies,
+                        entry -> entry.getChassisId() + "/" + entry.getStrategyId());
         if (action <= 6) {
             planning.edit(strategy, action);
             return;
         }
         switch (action) {
             case 7 -> strategy.markReady();
-            case 8 -> strategy.getCar().scheduleStrategy(strategy);
+            case 8 -> strategy.getCar().scheduleStrategy(strategy.getStrategyId());
             case 9 -> strategy.markComplete();
             case 10 -> strategy.cancelStrategy(input.text("Cancellation reason"));
             default -> throw new IllegalArgumentException("Unknown strategy action.");

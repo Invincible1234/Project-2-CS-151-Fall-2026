@@ -1,11 +1,14 @@
 package test;
 
 import exception.CapacityExceededException;
+
 import f1.model.RaceResult;
+
+import util.Constants;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import util.Constants;
 
 public class RaceResultCapacityVerification {
     public static void main(String[] args) {
@@ -14,7 +17,8 @@ public class RaceResultCapacityVerification {
             new RaceResult("R" + i, "RACE" + i, "CAR", "DRIVER", "CIRCUIT", 1, "2026-10-22", clock);
         }
         try {
-            new RaceResult("EXTRA", "EXTRA-RACE", "CAR", "DRIVER", "CIRCUIT", 1, "2026-10-22", clock);
+            new RaceResult(
+                    "EXTRA", "EXTRA-RACE", "CAR", "DRIVER", "CIRCUIT", 1, "2026-10-22", clock);
             throw new AssertionError("The 101st race result was accepted.");
         } catch (CapacityExceededException expected) {
             System.out.println("Race result capacity verification passed.");

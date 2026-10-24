@@ -2,12 +2,16 @@ package f1.service;
 
 import exception.CapacityExceededException;
 import exception.DuplicateEntityException;
+
 import f1.model.Circuit;
+
+import util.Constants;
+import util.IdentityRegistry;
+import util.Validation;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import util.Constants;
-import util.Validation;
 
 public final class CircuitRegistry {
     private final Map<String, Circuit> circuits = new LinkedHashMap<>();
@@ -17,6 +21,7 @@ public final class CircuitRegistry {
             throw new IllegalArgumentException("Circuit is required.");
         }
         requireAvailableId(circuit.getCircuitId());
+        IdentityRegistry.claim(this, circuit, List.of("Circuit ID", circuit.getCircuitId()));
         circuits.put(circuit.getCircuitId(), circuit);
     }
 
