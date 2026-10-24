@@ -20,15 +20,19 @@ public final class CarMenu {
     }
 
     public void run() {
-        while (true) {
-            input.print("Cars: 1 Create hybrid | 2 Create classic | 3 List | 4 Prepare | 5 Mileage"
-                    + " | 6 Upgrade | 7 Remove | 8 Decommission classic | 9 Service | 10 Details | 0 Back");
-            int option = input.integer("Choose a car action", 0, 10);
-            if (option == 0) {
-                return;
-            }
-            input.action(() -> perform(option));
+        while (open()) {
         }
+    }
+
+    public boolean open() {
+        input.print("Cars: 1 Create hybrid | 2 Create classic | 3 List | 4 Prepare | 5 Mileage"
+                + " | 6 Upgrade | 7 Remove | 8 Decommission classic | 9 Service | 10 Details | 0 Back");
+        int option = input.integer("Choose a car action", 0, 10);
+        if (option == 0) {
+            return false;
+        }
+        input.action(() -> perform(option));
+        return true;
     }
 
     private void perform(int option) {

@@ -15,15 +15,19 @@ public final class CircuitMenu {
     }
 
     public void run() {
-        while (true) {
-            input.print("Circuits: 1 Create | 2 List | 3 Weather | 4 Corner note | 5 Record lap"
-                    + " | 6 Strategy hint | 7 Long straights | 8 Remove historical lap | 0 Back");
-            int option = input.integer("Choose a circuit action", 0, 8);
-            if (option == 0) {
-                return;
-            }
-            input.action(() -> perform(option));
+        while (open()) {
         }
+    }
+
+    public boolean open() {
+        input.print("Circuits: 1 Create | 2 List | 3 Weather | 4 Corner note | 5 Record lap"
+                + " | 6 Strategy hint | 7 Long straights | 8 Remove historical lap | 0 Back");
+        int option = input.integer("Choose a circuit action", 0, 8);
+        if (option == 0) {
+            return false;
+        }
+        input.action(() -> perform(option));
+        return true;
     }
 
     private void perform(int option) {
