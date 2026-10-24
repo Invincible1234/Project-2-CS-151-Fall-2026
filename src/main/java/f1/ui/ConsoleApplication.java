@@ -22,15 +22,16 @@ public final class ConsoleApplication {
             while (true) {
                 input.show("Main menu | Role: " + state.getRole());
                 input.show("1 Teams | 2 Strategies | 3 Inventory and budget | 4 Load demo | 5 Session role | 0 EXIT");
+                input.show("6 Cars | 7 Circuits | 8 Race results | 9 Personnel");
                 try {
-                    dispatch(input.integer("Main action", 0, 5));
-                } catch (ConsoleInput.Exit exit) {
+                    dispatch(input.integer("Main action", 0, 9));
+                } catch (ConsoleInput.ExitRequestedException | ui.ConsoleInput.ExitRequested exit) {
                     throw exit;
                 } catch (RuntimeException error) {
                     input.show("Action failed: " + error.getMessage());
                 }
             }
-        } catch (ConsoleInput.Exit exit) {
+        } catch (ConsoleInput.ExitRequestedException | ui.ConsoleInput.ExitRequested exit) {
             input.show("Goodbye.");
         }
     }
@@ -48,6 +49,13 @@ public final class ConsoleApplication {
             case 5 -> {
                 state.setRole(input.choice("Session role", UserRole.class));
                 input.show("Session role: " + state.getRole());
+            }
+            case 6 -> new ui.CarMenu(new ui.ConsoleInput(input), state.team()).open();
+            case 7 -> new ui.CircuitMenu(new ui.ConsoleInput(input), state.getCircuitRegistry()).open();
+            case 8 -> new ui.RaceResultMenu(new ui.ConsoleInput(input), state.team()).open();
+            case 9 -> {
+                PersonnelMenu personnel = new PersonnelMenu(state.team(), input);
+                state.setRole(personnel.open(state.getRole()));
             }
             default -> throw new IllegalArgumentException("Unknown main action.");
         }

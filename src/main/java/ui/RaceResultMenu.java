@@ -18,15 +18,19 @@ public final class RaceResultMenu {
     }
 
     public void run() {
-        while (true) {
-            input.print("Race results: 1 Record and apply points | 2 List | 3 Correct finish"
-                    + " | 4 Void result | 5 Standings | 6 Team performance | 0 Back");
-            int option = input.integer("Choose a result action", 0, 6);
-            if (option == 0) {
-                return;
-            }
-            input.action(() -> perform(option));
+        while (open()) {
         }
+    }
+
+    public boolean open() {
+        input.print("Race results: 1 Record and apply points | 2 List | 3 Correct finish"
+                + " | 4 Void result | 5 Standings | 6 Team performance | 0 Back");
+        int option = input.integer("Choose a result action", 0, 6);
+        if (option == 0) {
+            return false;
+        }
+        input.action(() -> perform(option));
+        return true;
     }
 
     private void perform(int option) {
